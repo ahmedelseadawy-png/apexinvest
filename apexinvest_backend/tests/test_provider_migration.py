@@ -666,3 +666,122 @@ def test_live_price_response_schema_unchanged_across_modes(monkeypatch):
     assert expected_keys <= set(out_auto["data_source"].keys())
     assert set(out_eodhd["data_source"]["price_crosscheck"].keys()) == \
            set(out_auto["data_source"]["price_crosscheck"].keys())
+
+
+# --------------------------------------------------------------------------- #
+# Regression: eodhd_egx.fetch_quote() must use the RAW `close`, never
+# `adjusted_close`. fetch_daily()/_parse_eod() keep back-adjusting OHLC for
+# technical-analysis continuity -- unchanged, verified by the SAME payload.
+# --------------------------------------------------------------------------- #
+
+class _FakeQuoteResp:
+    def __init__(self, payload):
+        self.status_code = 200
+        self._payload = payload
+    def raise_for_status(self):
+        pass
+    def json(self):
+        return self._payload
+
+
+def test_fetch_quote_uses_raw_close_not_adjusted_close(monkeypatch):
+    """The exact scenario from the bug report: close=33, adjusted_close=30 --
+    the displayed/quoted price must be 33, never 30."""
+    monkeypatch.setenv("EODHD_API_TOKEN", "demo-token")
+    bars = [
+        {"date": "2026-01-05", "open": 33.5, "high": 34.0, "low": 32.8,
+         "close": 33.0, "adjusted_close": 30.0, "volume": 50000},
+    ]
+    monkeypatch.setattr(eodhd_egx.requests, "get", lambda *a, **k: _FakeQuoteResp(bars))
+
+    q = eodhd_egx.fetch_quote("COMI")
+
+    assert q["price"] == 33.0
+    assert q["price"] != 30.0
+    assert q["symbol"] == "COMI"
+    assert q["currency"] == "EGP"
+    assert q["as_of"] == "2026-01-05"
+
+
+def test_fetch_quote_prev_close_and_change_pct_use_raw_closes(monkeypatch):
+    """prev_close and change_pct must also come from raw closes, not adjusted
+    ones -- proving the fix covers all three quote fields, not just price."""
+    monkeypatch.setenv("EODHD_API_TOKEN", "demo-token")
+    bars = [
+        {"date": "2026-01-05", "open": 32.5, "high": 33.5, "low": 32.0,
+         "close": 33.0, "adjusted_close": 30.0, "volume": 50000},
+        {"date": "2026-01-06", "open": 33.0, "high": 35.5, "low": 32.9,
+         "close": 35.0, "adjusted_close": 31.8, "volume": 51000},
+    ]
+    monkeypatch.setattr(eodhd_egx.requests, "get", lambda *a, **k: _FakeQuoteResp(bars))
+
+    q = eodhd_egx.fetch_quote("COMI")
+
+    assert q["price"] == 35.0                      # raw last close, not 31.8
+    assert q["prev_close"] == 33.0                  # raw previous close, not 30.0
+    assert q["change_pct"] == pytest.approx(round((35.0 - 33.0) / 33.0 * 100, 2))
+    assert q["as_of"] == "2026-01-06"
+
+
+def test_fetch_daily_adjustment_unchanged_alongside_fixed_fetch_quote(monkeypatch):
+    """Same payload, both functions: fetch_daily's OHLC stays back-adjusted
+    (unchanged technical-analysis behaviour) while fetch_quote now returns the
+    raw close -- proving the fix did not touch _parse_eod/fetch_daily at all."""
+    monkeypatch.setenv("EODHD_API_TOKEN", "demo-token")
+    bars = [
+        {"date": "2026-01-05", "open": 32.5, "high": 33.5, "low": 32.0,
+         "close": 33.0, "adjusted_close": 30.0, "volume": 50000},
+        {"date": "2026-01-06", "open": 33.0, "high": 35.5, "low": 32.9,
+         "close": 35.0, "adjusted_close": 31.8, "volume": 51000},
+    ]
+    monkeypatch.setattr(eodhd_egx.requests, "get", lambda *a, **k: _FakeQuoteResp(bars))
+
+    df, meta = eodhd_egx.fetch_daily("COMI")
+    assert meta["adjusted"] is True
+    assert df["close"].iloc[0] == pytest.approx(30.0)   # back-adjusted, unchanged
+    assert df["close"].iloc[-1] == pytest.approx(31.8)  # back-adjusted, unchanged
+
+    monkeypatch.setattr(eodhd_egx.requests, "get", lambda *a, **k: _FakeQuoteResp(bars))
+    q = eodhd_egx.fetch_quote("COMI")
+    assert q["price"] == 35.0                           # raw, fixed
+
+
+def test_fetch_quote_no_adjustment_case_unaffected(monkeypatch):
+    """When EODHD reports no adjustment at all (close == adjusted_close, the
+    common case), the fix changes nothing observable."""
+    monkeypatch.setenv("EODHD_API_TOKEN", "demo-token")
+    bars = [
+        {"date": "2026-01-05", "open": 9.9, "high": 10.2, "low": 9.8,
+         "close": 10.0, "adjusted_close": 10.0, "volume": 100000},
+        {"date": "2026-01-06", "open": 10.1, "high": 10.4, "low": 10.0,
+         "close": 10.2, "adjusted_close": 10.2, "volume": 120000},
+    ]
+    monkeypatch.setattr(eodhd_egx.requests, "get", lambda *a, **k: _FakeQuoteResp(bars))
+    q = eodhd_egx.fetch_quote("COMI")
+    assert q["price"] == 10.2
+    assert q["prev_close"] == 10.0
+
+
+def test_feed_fetch_quote_eodhd_forced_returns_raw_price_end_to_end(monkeypatch):
+    """End-to-end through feed.fetch_quote() (what service.py/quotes() and the
+    live_price overlay actually call): forced DATA_PROVIDER=eodhd must return
+    the raw close, and must not touch Yahoo or TradingView."""
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setenv("EODHD_API_TOKEN", "demo-token")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    bars = [
+        {"date": "2026-01-05", "open": 32.5, "high": 33.5, "low": 32.0,
+         "close": 33.0, "adjusted_close": 30.0, "volume": 50000},
+    ]
+    monkeypatch.setattr(eodhd_egx.requests, "get", lambda *a, **k: _FakeQuoteResp(bars))
+    def yahoo_should_not_run(*a, **k):
+        raise AssertionError("Yahoo must never be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", yahoo_should_not_run)
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", yahoo_should_not_run)
+    def tv_should_not_run(*a, **k):
+        raise AssertionError("TradingView must never be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(tradingview_egx, "fetch_quote", tv_should_not_run)
+    monkeypatch.setattr(tradingview_egx, "fetch_quotes", tv_should_not_run)
+
+    q = feed.fetch_quote("COMI")
+    assert q["price"] == 33.0

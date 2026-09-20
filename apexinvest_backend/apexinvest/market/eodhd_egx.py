@@ -77,17 +77,15 @@ def _from_date(lookback: str) -> str | None:
     return (date.today() - timedelta(days=days)).isoformat()
 
 
-def fetch_daily(symbol: str, lookback: str = "1y", timeout: float = 10.0) -> tuple[pd.DataFrame, dict]:
-    """Return (candles, meta) for one EGX symbol from EODHD. Same shape as Yahoo.
-
-    Raises DataUnavailable when the symbol has no data; requests.RequestException
-    on network/HTTP errors (caller translates to 502).
-    """
+def _fetch_eod_json(symbol: str, lookback: str, timeout: float):
+    """Network call shared by fetch_daily and fetch_quote — returns the raw
+    EODHD JSON payload plus the normalised short symbol. Neither adjusts nor
+    otherwise transforms anything; that's each caller's own job."""
     if requests is None:  # pragma: no cover
         raise RuntimeError("The 'requests' package is required: pip install requests")
     key = api_key()
     if not key:
-        raise DataUnavailable("EODHD API key not configured (set EODHD_API_KEY)")
+        raise DataUnavailable("EODHD API key not configured (set EODHD_API_TOKEN)")
 
     sym = _eodhd_symbol(symbol)
     params = {"api_token": key, "period": "d", "fmt": "json", "order": "a"}
@@ -96,18 +94,63 @@ def fetch_daily(symbol: str, lookback: str = "1y", timeout: float = 10.0) -> tup
         params["from"] = frm
     resp = requests.get(_BASE_URL.format(sym=sym), params=params, timeout=timeout)
     resp.raise_for_status()
-    return _parse_eod(resp.json(), symbol.strip().upper().split(".")[0])
+    return resp.json(), symbol.strip().upper().split(".")[0]
+
+
+def fetch_daily(symbol: str, lookback: str = "1y", timeout: float = 10.0) -> tuple[pd.DataFrame, dict]:
+    """Return (candles, meta) for one EGX symbol from EODHD. Same shape as Yahoo.
+    OHLC is back-adjusted for splits/dividends (see _parse_eod) — unchanged,
+    for technical-analysis continuity. Not used for the displayed current
+    price; see fetch_quote for that.
+
+    Raises DataUnavailable when the symbol has no data; requests.RequestException
+    on network/HTTP errors (caller translates to 502).
+    """
+    payload, short_sym = _fetch_eod_json(symbol, lookback, timeout)
+    return _parse_eod(payload, short_sym)
+
+
+def _raw_eod_rows(payload, sym: str) -> list[dict]:
+    """Rows with a valid RAW `close` (never `adjusted_close`) — for the quoted
+    /displayed price only. Kept fully separate from _parse_eod's back-adjusted
+    OHLC, which exists for technical-analysis continuity, not for the price a
+    user sees. Adjustment is a valid concern for indicators computed over a
+    multi-year series that spans corporate actions; it is NOT the actual price
+    the exchange printed for that session, which is what a quote must show."""
+    if isinstance(payload, dict) and payload.get("error"):
+        raise DataUnavailable(f"{sym}: {payload['error']}")
+    rows_in = payload if isinstance(payload, list) else []
+    if not rows_in:
+        raise DataUnavailable(f"{sym}: no data returned by EODHD")
+
+    out = []
+    for bar in rows_in:
+        c = _num(bar.get("close"))
+        if c is None:
+            continue  # skip malformed bars — never invent a close
+        out.append({"close": c, "date": bar.get("date")})
+
+    if not out:
+        raise DataUnavailable(f"{sym}: no usable close price returned by EODHD")
+    return out
 
 
 def fetch_quote(symbol: str, timeout: float = 8.0) -> dict:
-    """Latest close + daily change (end-of-day / delayed), mirroring yahoo_egx."""
-    df, meta = fetch_daily(symbol, lookback="1mo", timeout=timeout)
-    price = float(df["close"].iloc[-1])
-    prev = float(df["close"].iloc[-2]) if len(df) >= 2 else price
+    """Latest RAW close + daily change (end-of-day / delayed), mirroring
+    yahoo_egx's schema. Deliberately uses the raw `close` field, never
+    `adjusted_close` — the displayed/current price must be the actual EGX
+    closing price the exchange reported, not a split/dividend-adjusted value
+    (that adjustment is for fetch_daily's technical-analysis series only)."""
+    payload, short_sym = _fetch_eod_json(symbol, lookback="1mo", timeout=timeout)
+    rows = _raw_eod_rows(payload, short_sym)
+    price = rows[-1]["close"]
+    prev = rows[-2]["close"] if len(rows) >= 2 else price
     change = ((price - prev) / prev * 100.0) if prev else 0.0
+    last_date = rows[-1]["date"]
+    as_of = str(last_date)[:10] if last_date else datetime.now(tz=timezone.utc).date().isoformat()
     return {
-        "symbol": meta["symbol"], "price": round(price, 4), "prev_close": round(prev, 4),
-        "change_pct": round(change, 2), "as_of": meta["as_of"], "currency": meta["currency"],
+        "symbol": short_sym, "price": round(price, 4), "prev_close": round(prev, 4),
+        "change_pct": round(change, 2), "as_of": as_of, "currency": "EGP",
     }
 
 
