@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from . import tradingview_egx, yahoo_egx
+from . import feed, tradingview_egx, yahoo_egx
 
 # Timeframes we can truly serve today (daily and up), vs those that need a paid
 # intraday feed we don't have. Kept explicit so the app never pretends.
@@ -85,10 +85,20 @@ def _quality(n: int, min_bars: int, adjusted: bool, freshness: str) -> dict:
     return {"score": score, "note": "; ".join(notes) or "clean, adjusted, sufficient history"}
 
 
+def _provider_label(meta: dict) -> str:
+    """Honest provider label for the data-source panel, derived from whichever
+    adapter actually served this meta dict's ``source`` (EODHD or Yahoo) —
+    never hardcoded, since ``feed.fetch_daily`` may return either."""
+    if "EODHD" in str(meta.get("source") or ""):
+        return "EODHD (EGX end-of-day, adjusted)"
+    return "Yahoo Finance (EGX end-of-day, adjusted)"
+
+
 def annotate_daily(meta: dict, n_candles: int, *, range_used: str, reason: str,
                    min_bars: int = 200) -> dict:
-    """Attach honest freshness + quality fields to a Yahoo daily meta dict.
-    Used by the analysis service so the frontend can show the data-source panel."""
+    """Attach honest freshness + quality fields to a daily meta dict (from either
+    EODHD or Yahoo — see ``_provider_label``). Used by the analysis service so
+    the frontend can show the data-source panel."""
     as_of = meta.get("as_of")
     age = _age_days(as_of)
     fresh = _classify_eod(age)
@@ -96,7 +106,7 @@ def annotate_daily(meta: dict, n_candles: int, *, range_used: str, reason: str,
     q = _quality(n_candles, min_bars, adjusted, fresh)
     return {
         **meta,
-        "provider": "Yahoo Finance (EGX end-of-day, adjusted)",
+        "provider": _provider_label(meta),
         "timeframe": "1d",
         "data_type": "historical/end-of-day",
         "range_used": range_used,
@@ -118,8 +128,10 @@ def annotate_daily(meta: dict, n_candles: int, *, range_used: str, reason: str,
 # --------------------------------------------------------------------------- #
 def get_daily(symbol: str, *, lookback: str = "2y", min_bars: int = 200,
               reason: str = "trend, major S/R and higher-timeframe context"):
-    """Adjusted daily candles + honest metadata. Raises like yahoo_egx.fetch_daily."""
-    df, meta = yahoo_egx.fetch_daily(symbol, lookback=lookback)
+    """Adjusted daily candles + honest metadata. Provider-aware (EODHD or Yahoo,
+    per DATA_PROVIDER / EODHD_API_TOKEN — see market/feed.py). Raises like
+    yahoo_egx.fetch_daily / feed.DataProviderError."""
+    df, meta = feed.fetch_daily(symbol, lookback=lookback)
     return {"available": True, "candles": df,
             "meta": annotate_daily(meta, len(df), range_used=lookback,
                                    reason=reason, min_bars=min_bars)}
@@ -162,9 +174,11 @@ def health(probe_symbol: str = "COMI") -> dict:
     """Honest data-source health: what each provider can serve, and the current
     freshness of the daily feed (probed once). Never reports anything as LIVE."""
     daily_status = {"available": False}
+    provider_name = "Yahoo Finance"  # updated below once we know which adapter actually answered
     try:
         d = get_daily(probe_symbol, lookback="1mo", min_bars=15)
         m = d["meta"]
+        provider_name = m.get("provider") or provider_name
         daily_status = {"available": True, "as_of": m.get("as_of"),
                         "data_age_days": m.get("data_age_days"),
                         "freshness": m.get("freshness"),
@@ -178,21 +192,21 @@ def health(probe_symbol: str = "COMI") -> dict:
         timeframes[tf] = {"available": False, "provider": None,
                           "reason": "no free/legal intraday EGX feed"}
     for tf in ("1d", "1wk", "1mo"):
-        timeframes[tf] = {"available": True, "provider": "Yahoo Finance (adjusted)",
+        timeframes[tf] = {"available": True, "provider": provider_name,
                           "data_type": "end-of-day", "is_live": False}
 
     return {
         "providers": [
-            {"name": "Yahoo Finance", "role": "daily/weekly/monthly, adjusted, history",
+            {"name": provider_name, "role": "daily/weekly/monthly, adjusted, history",
              "status": "available" if daily_status.get("available") else "unreachable",
              "timeframes": ["1d", "1wk", "1mo"], "is_live": False, **{"daily": daily_status}},
             {"name": "TradingView (scanner)", "role": "delayed current price only",
              "status": "best-effort", "timeframes": ["quote"], "is_live": False},
         ],
         "timeframes": timeframes,
-        "best_for": {"quote": "TradingView delayed → Yahoo EOD",
-                     "daily": "Yahoo (adjusted)", "weekly": "Yahoo (adjusted)",
-                     "history": "Yahoo (adjusted)",
+        "best_for": {"quote": f"TradingView delayed → {provider_name}",
+                     "daily": provider_name, "weekly": provider_name,
+                     "history": provider_name,
                      "intraday": "NONE — requires a paid licensed feed"},
         "note": ("No free or legal real-time/intraday EGX feed exists. Daily and "
                  "longer history are adjusted end-of-day from Yahoo. Intraday (and a "

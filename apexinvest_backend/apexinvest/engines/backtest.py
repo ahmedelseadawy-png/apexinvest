@@ -32,7 +32,7 @@ import concurrent.futures as cf
 import pandas as pd
 
 from ..domain import Objective
-from ..market import yahoo_egx
+from ..market import feed, yahoo_egx
 
 
 def _slice_fetcher(sub: pd.DataFrame):
@@ -259,8 +259,9 @@ def backtest_universe(symbols: list, *, objective: Objective = Objective.SWING,
     """Run the walk-forward backtest across many symbols and pool the trades.
 
     `fetch` is injectable for tests: callable(symbol) -> daily DataFrame.
-    In production it defaults to Yahoo 2y history. Result is cached ~6h (it is a
-    heavy, run-occasionally validation, not a per-request call).
+    In production it defaults to 2y daily history via the unified market feed
+    (EODHD or Yahoo, per DATA_PROVIDER — see market/feed.py). Result is cached
+    ~6h (it is a heavy, run-occasionally validation, not a per-request call).
     """
     import time as _t
     live = fetch is None and analyze is None
@@ -271,7 +272,7 @@ def backtest_universe(symbols: list, *, objective: Objective = Objective.SWING,
             return {**hit["result"], "cached": True}
     if fetch is None:
         def fetch(sym):
-            df, _ = yahoo_egx.fetch_daily(sym, lookback="2y")
+            df, _ = feed.fetch_daily(sym, lookback="2y")
             return df
 
     syms = [s.strip().upper() for s in symbols if s and s.strip()]

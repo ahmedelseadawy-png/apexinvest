@@ -13,11 +13,14 @@ and it raises the shared ``yahoo_egx.DataUnavailable`` so the API keeps returnin
 
 Setup (no code change needed):
   * Get an API key from eodhd.com and set the environment variable
-    ``EODHD_API_KEY`` (or ``APEX_EODHD_KEY``) before starting the backend.
+    ``EODHD_API_TOKEN`` (or the older ``EODHD_API_KEY`` / ``APEX_EODHD_KEY`` —
+    all three are accepted, checked in that order) before starting the backend.
   * EGX symbols use the ``.EGX`` suffix by default (``COMI.EGX``). If EODHD ever
     uses a different exchange code for Egypt, set ``EODHD_EGX_SUFFIX`` to override
     it — no code change required.
 When no key is set, ``enabled()`` is False and the app just uses Yahoo as before.
+See ``market/feed.py`` for the ``DATA_PROVIDER`` switch that controls whether
+EODHD is tried first with a Yahoo fallback (default) or used exclusively.
 """
 from __future__ import annotations
 
@@ -45,7 +48,8 @@ _LOOKBACK_DAYS = {"1mo": 31, "3mo": 92, "6mo": 183, "ytd": 365,
 
 
 def api_key() -> str | None:
-    return os.environ.get("EODHD_API_KEY") or os.environ.get("APEX_EODHD_KEY") or None
+    return (os.environ.get("EODHD_API_TOKEN") or os.environ.get("EODHD_API_KEY")
+            or os.environ.get("APEX_EODHD_KEY") or None)
 
 
 def enabled() -> bool:
