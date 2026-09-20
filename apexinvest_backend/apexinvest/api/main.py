@@ -627,3 +627,16 @@ async def upload(file: UploadFile = File(...)):
         # 422: the file was received but could not be used; message tells the user why.
         raise HTTPException(status_code=422, detail=result.error)
     return result.summary()
+
+
+# --------------------------------------------------------------------------
+# Mobile web app (additive — nothing above is changed). The thin layer lives in
+# api/mobile.py: a CSV-import route that feeds the SAME engine path, plus static
+# hosting of the mobile-first UI at /m. The desktop UI at / and /app is untouched.
+# --------------------------------------------------------------------------
+from .mobile import router as _mobile_router, build_mobile_app as _build_mobile_app
+
+app.include_router(_mobile_router)
+_mobile_static = _build_mobile_app()
+if _mobile_static is not None:
+    app.mount("/m", _mobile_static)

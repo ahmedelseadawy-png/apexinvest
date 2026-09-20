@@ -78,6 +78,6 @@ echo Starting ApexInvest backend at http://localhost:8000
 echo Leave this window OPEN. Open the app (Open ApexInvest) or refresh your browser.
 echo (Ctrl+C or close this window to stop.)
 echo.
-%PYEXE% -m uvicorn apexinvest.api.main:app --reload
+%PYEXE% -m uvicorn apexinvest.api.main:app --reload %APEX_UVICORN_ARGS%
 
 pause
