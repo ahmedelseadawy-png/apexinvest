@@ -24,7 +24,14 @@ import requests
 
 from apexinvest import service
 from apexinvest.domain import Objective
-from apexinvest.market import datalayer, eodhd_egx, feed, yahoo_egx
+from apexinvest.market import datalayer, eodhd_egx, feed, fundamentals, tradingview_egx, yahoo_egx
+
+
+def _stub_fundamentals(monkeypatch):
+    """Fundamentals are fetched unconditionally whenever fetcher=None (a
+    separate, best-effort network call unrelated to price/history routing).
+    Stub it so live_price=True tests stay hermetic and deterministic."""
+    monkeypatch.setattr(fundamentals, "get", lambda symbol, **k: {"available": False, "reason": "test-stub"})
 
 EGX_TEST_SYMBOLS = ["COMI", "SWDY", "ABUK", "HRHO", "TMGH"]  # >= 5 EGX symbols, per spec
 
@@ -336,3 +343,326 @@ def test_datalayer_get_daily_is_provider_aware(monkeypatch):
     result = datalayer.get_daily("COMI", min_bars=1)
     assert result["available"] is True
     assert result["meta"]["provider"] == "EODHD (EGX end-of-day, adjusted)"
+
+
+# --------------------------------------------------------------------------- #
+# Current-price / quote path (scanner + /v1/quotes picker). Same DATA_PROVIDER
+# switch as historical OHLCV — this is the follow-up fix: the scanner's
+# candle-derived current_price already went through feed.fetch_daily (see
+# above), but service.py's separate quote-lookup path (quotes()/_yahoo_quotes,
+# used by the /v1/quotes picker) still called yahoo_egx.fetch_quote directly.
+# --------------------------------------------------------------------------- #
+
+def _quote(symbol="COMI", price=12.34, prev=12.0):
+    return {"symbol": symbol, "price": price, "prev_close": prev,
+            "change_pct": round((price - prev) / prev * 100, 2),
+            "as_of": "2026-01-06", "currency": "EGP"}
+
+
+def test_eodhd_and_yahoo_quote_schema_identical(monkeypatch):
+    """eodhd_egx.fetch_quote and yahoo_egx.fetch_quote must return the exact
+    same key set -- the schema service.quotes() / the /v1/quotes response /
+    the picker all depend on never needing to change."""
+    monkeypatch.setenv("EODHD_API_TOKEN", "demo-token")
+    closes = [10.0, 10.2, 10.5]
+
+    class _Resp:
+        def __init__(self, payload):
+            self.status_code = 200
+            self._payload = payload
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return self._payload
+
+    # yahoo_egx and eodhd_egx both `import requests` -- the same module
+    # singleton -- so patch/call/unpatch sequentially rather than patching
+    # both `.get` attributes at once (the second patch would just overwrite
+    # the first, since it's the identical shared object).
+    monkeypatch.setattr(yahoo_egx.requests, "get",
+                        lambda *a, **k: _Resp(_yahoo_payload(closes)))
+    yq = yahoo_egx.fetch_quote("COMI")
+    monkeypatch.setattr(eodhd_egx.requests, "get",
+                        lambda *a, **k: _Resp(_eodhd_payload(closes)))
+    eq = eodhd_egx.fetch_quote("COMI")
+
+    assert set(yq.keys()) == set(eq.keys()) == {
+        "symbol", "price", "prev_close", "change_pct", "as_of", "currency",
+    }
+
+
+def test_feed_fetch_quote_data_provider_unset_keeps_existing_auto_behaviour(monkeypatch):
+    monkeypatch.delenv("DATA_PROVIDER", raising=False)
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    monkeypatch.setattr(eodhd_egx, "fetch_quote", lambda sym, timeout=8.0: _quote(sym))
+    def yahoo_should_not_run(*a, **k):
+        raise AssertionError("Yahoo must not be called when EODHD answers in auto mode")
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", yahoo_should_not_run)
+    q = feed.fetch_quote("COMI")
+    assert q["symbol"] == "COMI"
+
+
+def test_feed_fetch_quote_eodhd_forced_uses_eodhd_not_yahoo(monkeypatch):
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    monkeypatch.setattr(eodhd_egx, "fetch_quote", lambda sym, timeout=8.0: _quote(sym))
+    def yahoo_should_not_run(*a, **k):
+        raise AssertionError("Yahoo quote must never be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", yahoo_should_not_run)
+    q = feed.fetch_quote("COMI")
+    assert q["symbol"] == "COMI"
+
+
+def test_feed_fetch_quote_eodhd_forced_failure_raises_controlled_error_no_yahoo_mix(monkeypatch):
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    def eodhd_fails(*a, **k):
+        raise yahoo_egx.DataUnavailable("no data")
+    monkeypatch.setattr(eodhd_egx, "fetch_quote", eodhd_fails)
+    def yahoo_should_not_run(*a, **k):
+        raise AssertionError("Yahoo quote must never be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", yahoo_should_not_run)
+    with pytest.raises(feed.DataProviderError):
+        feed.fetch_quote("COMI")
+
+
+def test_feed_fetch_quote_eodhd_forced_without_token_raises_controlled_error(monkeypatch):
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: False)
+    with pytest.raises(feed.DataProviderError):
+        feed.fetch_quote("COMI")
+
+
+def test_feed_fetch_quote_yahoo_forced_skips_eodhd(monkeypatch):
+    monkeypatch.setenv("DATA_PROVIDER", "yahoo")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    def eodhd_should_not_run(*a, **k):
+        raise AssertionError("EODHD must never be called when DATA_PROVIDER=yahoo")
+    monkeypatch.setattr(eodhd_egx, "fetch_quote", eodhd_should_not_run)
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", lambda sym, timeout=8.0: _quote(sym))
+    q = feed.fetch_quote("COMI")
+    assert q["symbol"] == "COMI"
+
+
+# ---- service.quotes() / _eod_quotes(): the picker's /v1/quotes path --------
+
+def test_service_quotes_forced_eodhd_skips_tradingview_and_uses_eodhd(monkeypatch):
+    """DATA_PROVIDER=eodhd must make service.quotes() a genuine single source
+    of truth: TradingView is skipped entirely (not just Yahoo)."""
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    def tv_should_not_run(*a, **k):
+        raise AssertionError("TradingView must not be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(tradingview_egx, "fetch_quotes", tv_should_not_run)
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    monkeypatch.setattr(eodhd_egx, "fetch_quote", lambda sym, timeout=8.0: _quote(sym))
+    def yahoo_should_not_run(*a, **k):
+        raise AssertionError("Yahoo quote must never be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", yahoo_should_not_run)
+
+    result = service.quotes(["COMI", "SWDY"])
+    assert set(result.keys()) == {"COMI", "SWDY"}
+
+
+def test_service_quotes_forced_eodhd_failure_omits_symbol_never_yahoo_fallback(monkeypatch):
+    """A per-symbol EODHD failure in forced mode must simply omit that symbol
+    -- never silently backfill it from Yahoo."""
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    def tv_should_not_run(*a, **k):
+        raise AssertionError("TradingView must not be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(tradingview_egx, "fetch_quotes", tv_should_not_run)
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    def eodhd_fails(*a, **k):
+        raise yahoo_egx.DataUnavailable("no data")
+    monkeypatch.setattr(eodhd_egx, "fetch_quote", eodhd_fails)
+    def yahoo_should_not_run(*a, **k):
+        raise AssertionError("Yahoo quote must never be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", yahoo_should_not_run)
+
+    result = service.quotes(["ZZZZ"])
+    assert result == {}
+
+
+def test_service_quotes_auto_mode_tradingview_first_unchanged(monkeypatch):
+    """Default (DATA_PROVIDER unset) must keep the existing TradingView-first
+    behaviour byte-for-byte -- this fix must not change it."""
+    monkeypatch.delenv("DATA_PROVIDER", raising=False)
+    monkeypatch.setattr(tradingview_egx, "fetch_quotes", lambda syms: {"COMI": _quote("COMI")})
+    def eod_should_not_run(sym):
+        raise AssertionError("EOD fallback must not run for a symbol TradingView already answered")
+    result = service.quotes(["COMI"], fetcher=eod_should_not_run)
+    assert "COMI" in result
+
+
+def test_service_quotes_auto_mode_falls_back_to_eod_for_tradingview_misses(monkeypatch):
+    monkeypatch.delenv("DATA_PROVIDER", raising=False)
+    monkeypatch.setattr(tradingview_egx, "fetch_quotes", lambda syms: {})
+    result = service.quotes(["COMI"], fetcher=lambda sym: _quote(sym))
+    assert result["COMI"]["symbol"] == "COMI"
+
+
+def test_service_quotes_response_schema_unchanged_regardless_of_provider(monkeypatch):
+    """Same key set whether TradingView, EODHD or Yahoo actually answered --
+    the frontend needs zero changes."""
+    expected_keys = {"symbol", "price", "prev_close", "change_pct", "as_of", "currency"}
+
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(tradingview_egx, "fetch_quotes",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run")))
+    result = service.quotes(["COMI"], fetcher=lambda sym: _quote(sym))
+    assert set(result["COMI"].keys()) == expected_keys
+
+    monkeypatch.delenv("DATA_PROVIDER", raising=False)
+    monkeypatch.setattr(tradingview_egx, "fetch_quotes", lambda syms: {})
+    result = service.quotes(["COMI"], fetcher=lambda sym: _quote(sym))
+    assert set(result["COMI"].keys()) == expected_keys
+
+
+def test_scanner_current_price_already_bypasses_tradingview_and_yahoo_quote(monkeypatch):
+    """The scanner's per-row current_price comes from analyze_symbol's candle
+    fetch (feed.fetch_daily), not from service.quotes()/tradingview/yahoo
+    quote functions at all -- scan() always calls analyze(..., live_price=False),
+    which skips the TradingView/quote overlay block in analyze_symbol entirely.
+    This test proves that data flow directly, end to end, under a forced
+    EODHD provider."""
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+
+    closes = [10.0 + 0.05 * i for i in range(220)]
+    e_df, e_meta = eodhd_egx._parse_eod(_eodhd_payload(closes), "COMI")
+    monkeypatch.setattr(eodhd_egx, "fetch_daily", lambda sym, lookback="1y", timeout=10.0: (e_df, e_meta))
+
+    def tv_should_not_run(*a, **k):
+        raise AssertionError("TradingView must not be called for a scan (live_price=False)")
+    monkeypatch.setattr(tradingview_egx, "fetch_quote", tv_should_not_run)
+    def yahoo_should_not_run(*a, **k):
+        raise AssertionError("Yahoo must not be called for a scan under DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", yahoo_should_not_run)
+    monkeypatch.setattr(yahoo_egx, "fetch_quote", yahoo_should_not_run)
+
+    out = service.analyze_symbol("COMI", Objective.SWING, live_price=False)
+    assert out["plan"]["current_price"] == pytest.approx(closes[-1])
+    assert "EODHD" in out["data_source"]["provider"]
+
+
+# --------------------------------------------------------------------------- #
+# analyze_symbol(..., live_price=True): the last remaining current-price
+# touchpoint (single-symbol /v1/analyses/auto/{symbol} and portfolio.py --
+# never the scanner, which always passes live_price=False, see above).
+# --------------------------------------------------------------------------- #
+
+_LONG_CLOSES = [10.0 + 0.05 * i for i in range(220)]
+
+
+def test_live_price_eodhd_forced_never_calls_tradingview(monkeypatch):
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    e_df, e_meta = eodhd_egx._parse_eod(_eodhd_payload(_LONG_CLOSES), "COMI")
+    monkeypatch.setattr(eodhd_egx, "fetch_daily", lambda sym, lookback="2y", timeout=10.0: (e_df, e_meta))
+    monkeypatch.setattr(eodhd_egx, "fetch_quote",
+                        lambda sym, timeout=8.0: _quote(sym, price=_LONG_CLOSES[-1] + 0.02,
+                                                        prev=_LONG_CLOSES[-2]))
+    def tv_should_not_run(*a, **k):
+        raise AssertionError("TradingView must never be called when DATA_PROVIDER=eodhd")
+    monkeypatch.setattr(tradingview_egx, "fetch_quote", tv_should_not_run)
+    _stub_fundamentals(monkeypatch)
+
+    out = service.analyze_symbol("COMI", Objective.SWING, live_price=True)
+    assert out["data_source"]["price_source"] is not None
+
+
+def test_live_price_eodhd_forced_uses_eodhd_quote(monkeypatch):
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    e_df, e_meta = eodhd_egx._parse_eod(_eodhd_payload(_LONG_CLOSES), "COMI")
+    monkeypatch.setattr(eodhd_egx, "fetch_daily", lambda sym, lookback="2y", timeout=10.0: (e_df, e_meta))
+    fresher_price = _LONG_CLOSES[-1] + 0.5
+    monkeypatch.setattr(eodhd_egx, "fetch_quote",
+                        lambda sym, timeout=8.0: _quote(sym, price=fresher_price, prev=_LONG_CLOSES[-2]))
+    monkeypatch.setattr(tradingview_egx, "fetch_quote",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run")))
+    _stub_fundamentals(monkeypatch)
+
+    out = service.analyze_symbol("COMI", Objective.SWING, live_price=True)
+    assert out["data_source"]["price"] == pytest.approx(round(fresher_price, 4))
+    # The crosscheck wording must be provider-aware, never hardcoded "Yahoo".
+    note = out["data_source"]["price_crosscheck"]["note"]
+    assert "EODHD" in note
+    assert "Yahoo" not in note
+
+
+def test_live_price_auto_mode_tradingview_first_unchanged(monkeypatch):
+    """Default (DATA_PROVIDER unset) must keep the existing TradingView-first
+    live-price behaviour byte-for-byte, including the "vs Yahoo EOD" wording
+    when Yahoo actually served the EOD close."""
+    monkeypatch.delenv("DATA_PROVIDER", raising=False)
+    y_df, y_meta = yahoo_egx._parse_chart(_yahoo_payload(_LONG_CLOSES), "COMI")
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", lambda sym, lookback="2y", timeout=10.0: (y_df, y_meta))
+    tv_price = _LONG_CLOSES[-1] + 0.3
+    monkeypatch.setattr(tradingview_egx, "fetch_quote",
+                        lambda sym, timeout=8.0: {"symbol": sym, "price": tv_price, "change_pct": 0.1,
+                                                  "currency": "EGP", "as_of": "2026-01-06",
+                                                  "source": "TradingView (delayed)"})
+    def eodhd_should_not_run(*a, **k):
+        raise AssertionError("EODHD quote must not run in auto mode when TradingView answers")
+    monkeypatch.setattr(eodhd_egx, "fetch_quote", eodhd_should_not_run)
+    _stub_fundamentals(monkeypatch)
+
+    out = service.analyze_symbol("COMI", Objective.SWING, live_price=True)
+    assert out["data_source"]["price"] == pytest.approx(round(tv_price, 4))
+    assert out["data_source"]["price_source"] == "TradingView (delayed)"
+    assert "Yahoo EOD" in out["data_source"]["price_crosscheck"]["note"]
+
+
+def test_live_price_yahoo_mode_still_tries_tradingview_first(monkeypatch):
+    """DATA_PROVIDER=yahoo forces Yahoo-only HISTORY (see test_provider_migration
+    tests above), but the live-price overlay behaviour is unchanged from auto:
+    TradingView is still attempted for freshness."""
+    monkeypatch.setenv("DATA_PROVIDER", "yahoo")
+    y_df, y_meta = yahoo_egx._parse_chart(_yahoo_payload(_LONG_CLOSES), "COMI")
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", lambda sym, lookback="2y", timeout=10.0: (y_df, y_meta))
+    tv_price = _LONG_CLOSES[-1] + 0.3
+    calls = []
+    def tv_fetch(sym, timeout=8.0):
+        calls.append(sym)
+        return {"symbol": sym, "price": tv_price, "change_pct": 0.1, "currency": "EGP",
+                "as_of": "2026-01-06", "source": "TradingView (delayed)"}
+    monkeypatch.setattr(tradingview_egx, "fetch_quote", tv_fetch)
+    _stub_fundamentals(monkeypatch)
+
+    out = service.analyze_symbol("COMI", Objective.SWING, live_price=True)
+    assert calls == ["COMI"]
+    assert out["data_source"]["price"] == pytest.approx(round(tv_price, 4))
+
+
+def test_live_price_response_schema_unchanged_across_modes(monkeypatch):
+    """data_source key set is identical whether DATA_PROVIDER is eodhd or
+    unset (auto) -- only the VALUES/wording differ (honest labeling), the
+    frontend needs zero changes."""
+    _stub_fundamentals(monkeypatch)
+
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    e_df, e_meta = eodhd_egx._parse_eod(_eodhd_payload(_LONG_CLOSES), "COMI")
+    monkeypatch.setattr(eodhd_egx, "fetch_daily", lambda sym, lookback="2y", timeout=10.0: (e_df, e_meta))
+    monkeypatch.setattr(eodhd_egx, "fetch_quote",
+                        lambda sym, timeout=8.0: _quote(sym, price=_LONG_CLOSES[-1] + 0.1,
+                                                        prev=_LONG_CLOSES[-2]))
+    monkeypatch.setattr(tradingview_egx, "fetch_quote",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run")))
+    out_eodhd = service.analyze_symbol("COMI", Objective.SWING, live_price=True)
+
+    monkeypatch.setenv("DATA_PROVIDER", "auto")
+    y_df, y_meta = yahoo_egx._parse_chart(_yahoo_payload(_LONG_CLOSES), "COMI")
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", lambda sym, lookback="2y", timeout=10.0: (y_df, y_meta))
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: False)
+    monkeypatch.setattr(tradingview_egx, "fetch_quote",
+                        lambda sym, timeout=8.0: {"symbol": sym, "price": _LONG_CLOSES[-1] + 0.1,
+                                                  "change_pct": 0.1, "currency": "EGP",
+                                                  "as_of": "2026-01-06", "source": "TradingView (delayed)"})
+    out_auto = service.analyze_symbol("COMI", Objective.SWING, live_price=True)
+
+    expected_keys = {"price", "price_source", "price_as_of", "price_crosscheck"}
+    assert expected_keys <= set(out_eodhd["data_source"].keys())
+    assert expected_keys <= set(out_auto["data_source"].keys())
+    assert set(out_eodhd["data_source"]["price_crosscheck"].keys()) == \
+           set(out_auto["data_source"]["price_crosscheck"].keys())

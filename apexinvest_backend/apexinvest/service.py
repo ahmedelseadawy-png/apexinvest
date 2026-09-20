@@ -130,10 +130,12 @@ def _wait_result(objective: Objective, candles: dict, ref_price: float,
     return out
 
 
-def _yahoo_quotes(symbols: list[str], *, fetcher=None, max_workers: int = 8) -> dict:
-    """Yahoo EOD quotes for several symbols, fetched concurrently. Omits misses."""
+def _eod_quotes(symbols: list[str], *, fetcher=None, max_workers: int = 8) -> dict:
+    """End-of-day quotes for several symbols via the unified market feed
+    (EODHD or Yahoo, per DATA_PROVIDER — see market/feed.py), fetched
+    concurrently. Omits misses."""
     import concurrent.futures as cf
-    fetch = fetcher or yahoo_egx.fetch_quote
+    fetch = fetcher or feed.fetch_quote
 
     def one(sym):
         try:
@@ -152,16 +154,27 @@ def _yahoo_quotes(symbols: list[str], *, fetcher=None, max_workers: int = 8) -> 
 
 
 def quotes(symbols: list[str], *, fetcher=None, max_workers: int = 8) -> dict:
-    """Latest price + daily change for several EGX symbols — mixed source.
+    """Latest price + daily change for several EGX symbols.
 
-    TradingView is tried first (fresher current price); any symbol it doesn't
-    return falls back to Yahoo's end-of-day close. If TradingView is blocked or
-    offline it simply returns nothing and everything comes from Yahoo. Symbols
-    both sources miss are omitted — never faked. Each quote carries its `source`.
+    Default (DATA_PROVIDER unset/auto, unchanged from before): TradingView is
+    tried first (fresher current price); any symbol it doesn't return falls
+    back to the unified EOD feed (EODHD if configured, else Yahoo). If
+    TradingView is blocked or offline it simply returns nothing and everything
+    comes from the EOD feed.
+
+    DATA_PROVIDER=eodhd: EODHD is the single source of truth for price exactly
+    as it is for historical OHLCV — TradingView is skipped entirely so no other
+    source is ever mixed in, and a symbol EODHD can't answer is simply omitted
+    (never silently replaced by Yahoo). Symbols the active source(s) miss are
+    always omitted — never faked. Each quote carries its `source` when the
+    underlying adapter provides one.
     """
     if not symbols:
         return {}
     syms = [s.strip().upper() for s in symbols if s and s.strip()]
+
+    if feed.provider_mode() == "eodhd":
+        return _eod_quotes(syms, fetcher=fetcher, max_workers=max_workers)
 
     # 1) TradingView (fresher). Never raises; {} if blocked/offline.
     try:
@@ -169,18 +182,21 @@ def quotes(symbols: list[str], *, fetcher=None, max_workers: int = 8) -> dict:
     except Exception:
         out = {}
 
-    # 2) Yahoo fallback for whatever TradingView didn't cover.
+    # 2) EOD fallback (EODHD if configured, else Yahoo) for whatever TradingView didn't cover.
     missing = [s for s in syms if s not in out]
     if missing:
-        for sym, q in _yahoo_quotes(missing, fetcher=fetcher, max_workers=max_workers).items():
+        for sym, q in _eod_quotes(missing, fetcher=fetcher, max_workers=max_workers).items():
             out.setdefault(sym, q)
     return out
 
 
-def _crosscheck_price(eod_close: float, live_price: float) -> dict:
-    """Compare two independent price sources (Yahoo EOD vs the freshest quote).
-    Returns the gap and an agreement flag. This never fabricates or reconciles the
-    numbers — it only reports whether they agree, so a stale/wrong feed is visible.
+def _crosscheck_price(eod_close: float, live_price: float, *, eod_label: str = "EOD") -> dict:
+    """Compare two independent price sources (the EOD close vs the freshest
+    quote actually used). `eod_label` names whichever adapter served the EOD
+    close — EODHD or Yahoo — so the note is honest about the real baseline,
+    never hardcoded to one provider. Returns the gap and an agreement flag.
+    This never fabricates or reconciles the numbers — it only reports whether
+    they agree, so a stale/wrong feed is visible.
     """
     if not eod_close or not live_price or eod_close <= 0:
         return {"available": False}
@@ -195,10 +211,16 @@ def _crosscheck_price(eod_close: float, live_price: float) -> dict:
         "diff_pct": diff_pct,
         "agree": agree,
         "severity": "ok" if agree else ("warn" if ad <= 15 else "high"),
-        "note": (f"Freshest quote is {diff_pct:+.2f}% vs Yahoo EOD — "
+        "note": (f"Freshest quote is {diff_pct:+.2f}% vs {eod_label} EOD — "
                  + ("sources agree." if agree
                     else "large gap; one feed may be stale or mismatched. Treat the current price with caution.")),
     }
+
+
+def _eod_provider_label(meta: dict) -> str:
+    """Short, honest name of whichever adapter served this meta dict's EOD
+    close (EODHD or Yahoo) — for wording only, never for calculations."""
+    return "EODHD" if "EODHD" in str(meta.get("source") or "") else "Yahoo"
 
 
 def analyze_symbol(symbol: str, objective: Objective, *, fetcher=None,
@@ -220,28 +242,38 @@ def analyze_symbol(symbol: str, objective: Objective, *, fetcher=None,
     provides = set(meta.get("provides") or yahoo_egx.PROVIDES)
     yahoo_close = float(df["close"].iloc[-1])
 
-    # Entry reference = the freshest current price. Try TradingView first (often a
-    # trading day fresher than Yahoo's EOD); fall back to the Yahoo close. The
-    # candle HISTORY always stays Yahoo — TradingView is price-only. Skipped when a
-    # test fetcher is injected so tests stay hermetic.
+    # Entry reference = the freshest current price.
+    #
+    # DATA_PROVIDER=eodhd: EODHD is the single source of truth for ALL price
+    # data (history AND current price) — TradingView is never called; the only
+    # "fresher" lookup attempted is another EODHD quote via feed.fetch_quote().
+    #
+    # Default (auto) / DATA_PROVIDER=yahoo: unchanged from before — try
+    # TradingView first (often a trading day fresher than the EOD close);
+    # fall back to the already-fetched EOD close. The candle HISTORY always
+    # stays whatever feed.fetch_daily() returned — TradingView is price-only.
+    #
+    # Skipped entirely when a test fetcher is injected so tests stay hermetic.
     last = yahoo_close
     meta = {**meta, "price": round(yahoo_close, 4),
             "price_source": meta.get("source"), "price_as_of": meta.get("as_of")}
     if fetcher is None and live_price:
+        forced_eodhd = feed.provider_mode() == "eodhd"
         try:
-            fresh = tradingview_egx.fetch_quote(symbol)
+            fresh = feed.fetch_quote(symbol) if forced_eodhd else tradingview_egx.fetch_quote(symbol)
         except Exception:
             fresh = None
         if fresh and fresh.get("price"):
             last = float(fresh["price"])
             meta["price"] = round(last, 4)
-            meta["price_source"] = fresh.get("source")
+            meta["price_source"] = fresh.get("source") or meta.get("source")
             meta["price_as_of"] = fresh.get("as_of")
             # Cross-validate the two independent sources. A large gap between the
-            # freshest quote and Yahoo's EOD close means one feed is stale or wrong;
+            # freshest quote and the EOD close means one feed is stale or wrong;
             # we surface it instead of trusting a single number silently. A normal
             # gap is just one session's move; only a big one is a warning.
-            meta["price_crosscheck"] = _crosscheck_price(yahoo_close, last)
+            meta["price_crosscheck"] = _crosscheck_price(
+                yahoo_close, last, eod_label=_eod_provider_label(meta))
 
     # Honest freshness + quality metadata via the data layer (source, data age,
     # freshness class, adjusted, range used + reason, quality score). Never "live".
