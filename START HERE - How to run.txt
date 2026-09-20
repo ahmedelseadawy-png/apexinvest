@@ -1,0 +1,37 @@
+ApexInvest — how to run it on your PC (Windows)
+================================================
+
+You need Python installed once. Then it's just a double-click.
+
+STEP 1 — Install Python (one time)
+  1. Go to https://www.python.org/downloads/
+  2. Download and run the installer.
+  3. IMPORTANT: on the first screen, TICK the box "Add Python to PATH",
+     then click "Install Now".
+
+STEP 2 — Run the app
+  1. Double-click  "Run ApexInvest.bat"
+  2. A black window opens (that's the engine) and installs a few packages the
+     first time — this can take a minute or two. LEAVE THAT WINDOW OPEN.
+  3. Your browser opens the app automatically at  http://localhost:8000
+     (if it doesn't, open that address yourself).
+
+That's it. To stop, close the black window. To start again, double-click
+"Run ApexInvest.bat" again.
+
+Optional: double-click "Create Desktop Shortcut.bat" to put an ApexInvest
+icon on your desktop.
+
+Notes
+-----
+- Data is end-of-day from a free source, so some small-cap stocks won't have
+  data — the app tells you honestly when that happens instead of guessing.
+- This runs entirely on your own PC. Nothing is uploaded anywhere.
+- If Windows SmartScreen warns about the .bat file, choose "More info" ->
+  "Run anyway" (it's just a text script that starts Python).
+
+Trouble?
+- "Python was not found" -> re-run the Python installer and make sure
+  "Add Python to PATH" is ticked, then try again.
+- Nothing opens -> make sure the black engine window is still open, then
+  refresh http://localhost:8000 in your browser.
