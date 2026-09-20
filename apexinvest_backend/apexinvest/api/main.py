@@ -79,15 +79,16 @@ class AccessKeyMiddleware(BaseHTTPMiddleware):
 # even a 401 carries CORS headers and the browser can read it.
 app.add_middleware(AccessKeyMiddleware)
 
-# Prototype CORS: allow the frontend (any origin, incl. file:// which sends
-# Origin: null) to call the API from the browser. Tighten to your real domain
-# before production.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Cloud hardening (infrastructure only; api/production.py). With APEX_ENV=production it
+# adds rate limits, size/shape validation, security headers and removes the public docs;
+# in local mode it changes nothing except redacting secrets from error text.
+from . import production as _production
+_production.install(app)
+
+# CORS. Local mode = the original prototype setting (any origin, incl. file:// which
+# sends Origin: null). APEX_ENV=production = only the origins listed in ALLOWED_ORIGINS
+# (default none: the server hosts both UIs, so same-origin needs no CORS at all).
+app.add_middleware(CORSMiddleware, **_production.cors_settings())
 
 
 @app.get("/v1/auth/status")

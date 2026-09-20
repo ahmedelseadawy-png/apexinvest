@@ -21,11 +21,13 @@ changed:
 from __future__ import annotations
 
 import io
+import json
 import re
 from pathlib import Path
 
 import pandas as pd
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -130,6 +132,17 @@ async def analyze_csv(
     out["data_source"] = ds
     out["csv_import"] = {"filename": filename, "rows": int(len(df)), "order": order, "as_of": as_of}
     return out
+
+
+@router.get("/m/config.js", include_in_schema=False)
+def mobile_config():
+    """Runtime settings for the mobile app (no secrets, ever).  ``API_BASE`` is empty when
+    the app and the API are served by the same server (the default, works on any domain
+    with nothing to edit); set the server variable ``PUBLIC_API_BASE`` only to point the
+    app at an API on a different host.  Registered before the /m static mount, so it wins."""
+    from .production import public_api_base
+    body = "window.APEX_CONFIG=" + json.dumps({"API_BASE": public_api_base()}) + ";\n"
+    return Response(body, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
 
 # ------------------------------------------------------------------ static /m

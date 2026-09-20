@@ -2,8 +2,8 @@
  * Caches ONLY the static app shell so the app opens instantly / installs as a PWA.
  * It never caches or intercepts /v1/* (analysis results always come live from the engine),
  * and it is network-first so an updated app is picked up immediately when online. */
-const CACHE = 'apex-m-shell-v1';
-const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'i18n.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
+const CACHE = 'apex-m-shell-v2';
+const SHELL = ['./', 'index.html', 'config.js', 'app.css', 'app.js', 'i18n.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

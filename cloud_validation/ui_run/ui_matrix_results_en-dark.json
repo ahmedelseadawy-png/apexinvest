@@ -1,0 +1,1102 @@
+[
+ {
+  "vp": "360x800",
+  "screen": "01_analyze",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "02_search",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "03_dash_buy",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "04_tab_strategies",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "04_tab_structure",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "04_tab_entry",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "04_tab_risk",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "04_tab_indicators",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "04_tab_chart",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "05_dash_wait",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "06_dash_long",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "07_dash_nodata",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "08_scanner",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "09_watchlist",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "10_portfolio",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "11_more",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "12_settings",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "13_import_valid",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "14_import_dash",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "15_import_error",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "16_journal",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "360x800",
+  "screen": "17_validation",
+  "ok": true,
+  "sw": 360,
+  "W": 360,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "01_analyze",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "02_search",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "03_dash_buy",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "04_tab_strategies",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "04_tab_structure",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "04_tab_entry",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "04_tab_risk",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "04_tab_indicators",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "04_tab_chart",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "05_dash_wait",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "06_dash_long",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "07_dash_nodata",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "08_scanner",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "09_watchlist",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "10_portfolio",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "11_more",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "12_settings",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "13_import_valid",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "14_import_dash",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "15_import_error",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "16_journal",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "390x844",
+  "screen": "17_validation",
+  "ok": true,
+  "sw": 390,
+  "W": 390,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "01_analyze",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "02_search",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "03_dash_buy",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "04_tab_strategies",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "04_tab_structure",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "04_tab_entry",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "04_tab_risk",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "04_tab_indicators",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "04_tab_chart",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "05_dash_wait",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "06_dash_long",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "07_dash_nodata",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "08_scanner",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "09_watchlist",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "10_portfolio",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "11_more",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "12_settings",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "13_import_valid",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "14_import_dash",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "15_import_error",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "16_journal",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "412x915",
+  "screen": "17_validation",
+  "ok": true,
+  "sw": 412,
+  "W": 412,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "01_analyze",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "02_search",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "03_dash_buy",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "04_tab_strategies",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "04_tab_structure",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "04_tab_entry",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "04_tab_risk",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "04_tab_indicators",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "04_tab_chart",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "05_dash_wait",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "06_dash_long",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "07_dash_nodata",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "08_scanner",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "09_watchlist",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "10_portfolio",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "11_more",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "12_settings",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "13_import_valid",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "14_import_dash",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "15_import_error",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "16_journal",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "768x1024",
+  "screen": "17_validation",
+  "ok": true,
+  "sw": 768,
+  "W": 768,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "01_analyze",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "02_search",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "03_dash_buy",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "04_tab_strategies",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "04_tab_structure",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "04_tab_entry",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "04_tab_risk",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "04_tab_indicators",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "04_tab_chart",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "05_dash_wait",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "06_dash_long",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "07_dash_nodata",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "08_scanner",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "09_watchlist",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "10_portfolio",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "11_more",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "12_settings",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "13_import_valid",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "14_import_dash",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "15_import_error",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "16_journal",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ },
+ {
+  "vp": "1366x768",
+  "screen": "17_validation",
+  "ok": true,
+  "sw": 1366,
+  "W": 1366,
+  "clip": [],
+  "small": [],
+  "overflow_x": false
+ }
+]

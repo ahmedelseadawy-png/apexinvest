@@ -1,3 +1,17 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
+venv/
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+.DS_Store
+*.pid
+cloud_validation/data/
+cloud_validation/ui_run/data
+cloud_validation/cloud_parity_rows.json

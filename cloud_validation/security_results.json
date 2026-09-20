@@ -1,0 +1,192 @@
+[
+ {
+  "test": "no key \u2192 401: /v1/analyses/auto/ABUK",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no key \u2192 401: /v1/scan",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no key \u2192 401: /v1/quotes?symbols=COMI",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no key \u2192 401: /v1/assets/search?q=a",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no key \u2192 401: /v1/data/health",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no key \u2192 401: /v1/fundamentals/COMI",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no key \u2192 401: /v1/backtest/COMI",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no key \u2192 401: /v1/portfolio",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "/v1/health is public",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "wrong key \u2192 401",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "right key \u2192 200",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "API docs hidden: /docs",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "API docs hidden: /redoc",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "API docs hidden: /openapi.json",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "source/config not served: /m/../frontend_app.html",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /m/%2e%2e/frontend_app.html",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /m/..%2fapexinvest/service.py",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /m/apexinvest/api/main.py",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /m/requirements.txt",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /m/../requirements.lock",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /.env",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /render.yaml",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /apexinvest/service.py",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "source/config not served: /m/.env",
+  "status": "PASS",
+  "detail": "HTTP 404"
+ },
+ {
+  "test": "CORS: foreign origin gets no Access-Control-Allow-Origin",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "CORS preflight from foreign origin refused",
+  "status": "PASS",
+  "detail": "HTTP 400"
+ },
+ {
+  "test": "API responses are no-store",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "server banner hidden",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "CSP + frame protection on /m/",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "HSTS + nosniff",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no secrets / tokens / long keys in any file the phone downloads",
+  "status": "PASS",
+  "detail": "[]"
+ },
+ {
+  "test": "no localhost / LAN address in any mobile file",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "invalid ticker \u2192 422, no stack trace",
+  "status": "PASS",
+  "detail": "{\"detail\":\"Enter a valid ticker (letters/digits), e.g. COMI.\"}"
+ },
+ {
+  "test": "unknown ticker \u2192 clean 404 JSON",
+  "status": "PASS",
+  "detail": "{\"detail\":\"NOPE: no data (offline test feed)\"}"
+ },
+ {
+  "test": "missing file \u2192 422 JSON (no trace)",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "16 MB upload refused (413)",
+  "status": "PASS",
+  "detail": "{\"detail\":\"File too large (limit 15 MB).\"}"
+ },
+ {
+  "test": "binary garbage upload \u2192 422, not a crash",
+  "status": "PASS",
+  "detail": "{\"detail\":\"Could not read file: UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position"
+ },
+ {
+  "test": "oversized query \u2192 414",
+  "status": "PASS",
+  "detail": ""
+ }
+]

@@ -49,3 +49,9 @@ docker run -p 8000:8000 -e APEX_ACCESS_KEYS="me:long-secret" -e EODHD_API_KEY=".
 cd apexinvest_backend && python -m pytest -q      # 146 tests (138 original + 8 for the mobile layer)
 ```
 The browser / parity validation suite is in `mobile_validation/` (see its README) and its results are in `docs/VALIDATION_REPORT.md` and `docs/MOBILE_TEST_RESULTS.md`.
+
+
+## Cloud deployment (phone works with the PC off)
+
+See `docs/DEPLOY_STEP_BY_STEP.md` (non-programmer guide), `docs/CLOUD_DEPLOYMENT.md` (design, cost, limits) and
+`docs/CLOUD_DEPLOYMENT_AUDIT.md`. Results of the cloud-vs-local comparison: `CLOUD_VALIDATION_REPORT.md`.

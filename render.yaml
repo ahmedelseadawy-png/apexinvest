@@ -1,0 +1,28 @@
+# Render Blueprint for ApexInvest  (https://render.com/docs/blueprint-spec)
+# One web service runs everything: the Python engine + FastAPI + the desktop UI (/) + the mobile app (/m/).
+# No database and no disk are needed: the app keeps nothing on the server (holdings/journal live on each phone).
+services:
+  - type: web
+    name: apexinvest
+    runtime: python
+    plan: starter                 # $7/month, always on. "free" also works but sleeps after 15 min idle (~1 min wake-up).
+    region: frankfurt             # closest Render region to Egypt
+    rootDir: apexinvest_backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.lock
+    # APEX_WORKERS defaults to 1: fits the 512 MB plan and keeps the scanner cache + rate limits exact.
+    startCommand: uvicorn apexinvest.api.main:app --host 0.0.0.0 --port $PORT --workers ${APEX_WORKERS:-1} --proxy-headers --forwarded-allow-ips '*' --no-access-log --no-server-header --timeout-graceful-shutdown 20
+    healthCheckPath: /v1/health
+    autoDeploy: true              # redeploy automatically on every push to the repo's main branch
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: APEX_ENV
+        value: production
+      - key: APEX_ACCESS_KEYS     # REQUIRED in practice: "name:long-random-key". Asked for at first deploy.
+        sync: false
+      - key: EODHD_API_KEY        # optional. Leave empty to use the free Yahoo feed (see docs/CLOUD_DEPLOYMENT.md).
+        sync: false
+      - key: ALLOWED_ORIGINS      # optional. Leave empty (same-origin). Only for a custom domain on a DIFFERENT host.
+        sync: false
+      - key: PUBLIC_API_BASE      # optional. Leave empty. Only if the API is on a different host than /m/.
+        sync: false

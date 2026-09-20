@@ -1,0 +1,232 @@
+[
+ {
+  "test": "device profile is Android Chrome (emulated)",
+  "status": "PASS",
+  "detail": "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141"
+ },
+ {
+  "test": "homepage / (desktop app) loads over the cloud server",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "/m/ opens and asks for the access key (server has keys enabled)",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "wrong key rejected with a clear message",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "right key opens ApexInvest",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "no API host is hard-coded: page calls only its own origin",
+  "status": "PASS",
+  "detail": "[('GET', '/v1/auth/status'), ('GET', '/v1/auth/status'), ('GET', '/v1/assets/search?q=A')]"
+ },
+ {
+  "test": "key stored in this browser only (localStorage), never in a URL",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "ABUK: signal/entry/stop/TP1/TP2/R:R/confidence/regime on the phone == engine JSON",
+  "status": "PASS",
+  "detail": "BUY entry=63.29 stop=59.29 tp1=71.29 tp2=76.09 rr=2.00 : 1 conf=5/5 (0.1s to render)"
+ },
+ {
+  "test": "ABUK: strategy confluence rows match engine signals",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "ABUK: support, resistance, POC/VAH/VAL, expected move & indicators are shown",
+  "status": "PASS",
+  "detail": "sup=True res=True vp=True"
+ },
+ {
+  "test": "ABUK: ticker and price shown",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "CCAP: signal/entry/stop/TP1/TP2/R:R/confidence/regime on the phone == engine JSON",
+  "status": "PASS",
+  "detail": "BUY entry=16.02 stop=15.44 tp1=17.05 tp2=17.17 rr=1.80 : 1 conf=4/5 (0.1s to render)"
+ },
+ {
+  "test": "CCAP: strategy confluence rows match engine signals",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "CCAP: support, resistance, POC/VAH/VAL, expected move & indicators are shown",
+  "status": "PASS",
+  "detail": "sup=True res=True vp=True"
+ },
+ {
+  "test": "CCAP: ticker and price shown",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "RAYA: signal/entry/stop/TP1/TP2/R:R/confidence/regime on the phone == engine JSON",
+  "status": "PASS",
+  "detail": "AVOID entry=\u2014 stop=\u2014 tp1=\u2014 tp2=\u2014 rr=\u2014 conf=3/5 (0.0s to render)"
+ },
+ {
+  "test": "RAYA: strategy confluence rows match engine signals",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "RAYA: support, resistance, POC/VAH/VAL, expected move & indicators are shown",
+  "status": "PASS",
+  "detail": "sup=True res=True vp=True"
+ },
+ {
+  "test": "RAYA: ticker and price shown",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "MCRO: signal/entry/stop/TP1/TP2/R:R/confidence/regime on the phone == engine JSON",
+  "status": "PASS",
+  "detail": "AVOID entry=\u2014 stop=\u2014 tp1=\u2014 tp2=\u2014 rr=\u2014 conf=3/5 (0.1s to render)"
+ },
+ {
+  "test": "MCRO: strategy confluence rows match engine signals",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "MCRO: support, resistance, POC/VAH/VAL, expected move & indicators are shown",
+  "status": "PASS",
+  "detail": "sup=True res=True vp=True"
+ },
+ {
+  "test": "MCRO: ticker and price shown",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "IEEC: signal/entry/stop/TP1/TP2/R:R/confidence/regime on the phone == engine JSON",
+  "status": "PASS",
+  "detail": "WAIT entry=\u2014 stop=\u2014 tp1=\u2014 tp2=\u2014 rr=\u2014 conf=3/5 (0.1s to render)"
+ },
+ {
+  "test": "IEEC: strategy confluence rows match engine signals",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "IEEC: support, resistance, POC/VAH/VAL, expected move & indicators are shown",
+  "status": "PASS",
+  "detail": "sup=True res=True vp=True"
+ },
+ {
+  "test": "IEEC: ticker and price shown",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "refresh re-requests the analysis from the server (no stale result)",
+  "status": "PASS",
+  "detail": "1->2"
+ },
+ {
+  "test": "CSV upload from the phone \u2192 backend \u2192 engine \u2192 result (matches API)",
+  "status": "PASS",
+  "detail": "0.2s file\u2192result; rows=160 order=oldest-first"
+ },
+ {
+  "test": "newest-first CSV is accepted (re-oriented server-side)",
+  "status": "PASS",
+  "detail": "DATA VALID 160 candle rows loaded"
+ },
+ {
+  "test": "bad file rejected with a clear message: CSV without OHLC columns",
+  "status": "PASS",
+  "detail": "DATA ERROR No Open/High/Low/Close columns found \u2014 this is not a candle export."
+ },
+ {
+  "test": "bad file rejected with a clear message: non-CSV text file",
+  "status": "PASS",
+  "detail": "DATA ERROR No Open/High/Low/Close columns found \u2014 this is not a candle export."
+ },
+ {
+  "test": "20-candle CSV through the phone UI: honest WAIT, no entry/stop/targets invented",
+  "status": "PASS",
+  "detail": "FINAL SIGNAL WAIT Only 20 daily bars available \u2014 need ~30+ to build a plan."
+ },
+ {
+  "test": "20-candle CSV sent straight to the API: honest WAIT, no entry/stop/targets",
+  "status": "PASS",
+  "detail": "WAIT"
+ },
+ {
+  "test": "service worker active, controls /m/",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "after closing & reopening the browser: still signed in, analysis freshly fetched from the server",
+  "status": "PASS",
+  "detail": "['/v1/auth/status', '/v1/assets/search?q=A', '/v1/analyses/auto/ABUK?objective=swing']"
+ },
+ {
+  "test": "service-worker cache holds only the app shell \u2014 no /v1 API response",
+  "status": "PASS",
+  "detail": "9 files"
+ },
+ {
+  "test": "offline: app shell still opens from the service-worker cache",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "offline: no stale analysis is shown (clear error instead)",
+  "status": "PASS",
+  "detail": "Can't reach the ApexInvest server. Check your connection and retry. Retry"
+ },
+ {
+  "test": "manifest: start_url, standalone, theme, icons(192/512/maskable), scope",
+  "status": "PASS",
+  "detail": "theme=#0d1417 bg=#0d1417"
+ },
+ {
+  "test": "manifest icons reachable",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "Chromium installability check (Page.getInstallabilityErrors)",
+  "status": "PASS",
+  "detail": "[]"
+ },
+ {
+  "test": "portrait 412x915: analysis screen has no horizontal scroll",
+  "status": "PASS",
+  "detail": "[412, 412]"
+ },
+ {
+  "test": "landscape 915x412: analysis screen has no horizontal scroll",
+  "status": "PASS",
+  "detail": "[915, 915]"
+ },
+ {
+  "test": "slow 3G-class network: app opens and analysis completes",
+  "status": "PASS",
+  "detail": "shell 2.3s, analysis 0.8s"
+ },
+ {
+  "test": "no JavaScript errors during the run",
+  "status": "PASS",
+  "detail": "[]"
+ }
+]

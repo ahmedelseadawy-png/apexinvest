@@ -1,0 +1,86 @@
+{
+ "unthrottled (sandbox loopback)": {
+  "median_interactive_ms": 105,
+  "kb_on_wire": 26.2,
+  "requests": 6,
+  "runs": [
+   {
+    "interactive_ms": 105,
+    "dcl_ms": 42,
+    "load_ms": 43,
+    "kb": 26.2,
+    "requests": 6
+   },
+   {
+    "interactive_ms": 90,
+    "dcl_ms": 37,
+    "load_ms": 40,
+    "kb": 26.2,
+    "requests": 6
+   },
+   {
+    "interactive_ms": 106,
+    "dcl_ms": 45,
+    "load_ms": 46,
+    "kb": 26.2,
+    "requests": 6
+   }
+  ]
+ },
+ "4G-class 9 Mbps / 170 ms RTT": {
+  "median_interactive_ms": 617,
+  "kb_on_wire": 26.2,
+  "requests": 6,
+  "runs": [
+   {
+    "interactive_ms": 619,
+    "dcl_ms": 395,
+    "load_ms": 396,
+    "kb": 26.2,
+    "requests": 6
+   },
+   {
+    "interactive_ms": 617,
+    "dcl_ms": 394,
+    "load_ms": 395,
+    "kb": 26.2,
+    "requests": 6
+   },
+   {
+    "interactive_ms": 615,
+    "dcl_ms": 394,
+    "load_ms": 395,
+    "kb": 26.2,
+    "requests": 6
+   }
+  ]
+ },
+ "slow 3G-class 400 kbps / 400 ms RTT": {
+  "median_interactive_ms": 2310,
+  "kb_on_wire": 26.2,
+  "requests": 6,
+  "runs": [
+   {
+    "interactive_ms": 2310,
+    "dcl_ms": 1474,
+    "load_ms": 1474,
+    "kb": 26.2,
+    "requests": 6
+   },
+   {
+    "interactive_ms": 2301,
+    "dcl_ms": 1472,
+    "load_ms": 1472,
+    "kb": 26.2,
+    "requests": 6
+   },
+   {
+    "interactive_ms": 2310,
+    "dcl_ms": 1474,
+    "load_ms": 1474,
+    "kb": 26.2,
+    "requests": 6
+   }
+  ]
+ }
+}

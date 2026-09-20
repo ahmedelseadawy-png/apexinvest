@@ -1,0 +1,27 @@
+[
+ {
+  "test": "desktop app shows the key screen when the server requires a key",
+  "status": "PASS",
+  "detail": "ApexInvest Private access Enter your access key  This app is private. Use the pe"
+ },
+ {
+  "test": "wrong key is refused",
+  "status": "PASS",
+  "detail": ""
+ },
+ {
+  "test": "right key opens the desktop app",
+  "status": "PASS",
+  "detail": "ApexInvest EGX WL\u00b7v16 Scanner Portfolio My Watch List Accuracy Journal \u0639 Help St"
+ },
+ {
+  "test": "desktop AUTO analysis ABUK shows the engine's entry/stop/TP1/TP2/action",
+  "status": "PASS",
+  "detail": "BUY 63.29 59.29 71.29 76.09"
+ },
+ {
+  "test": "no JavaScript errors on the desktop page",
+  "status": "PASS",
+  "detail": "[]"
+ }
+]

@@ -101,6 +101,11 @@ const debounce = (fn, ms) => { let id; return (...a) => { clearTimeout(id); id =
 
 /* ---------------------------------------------------------------------- API */
 class ApiError extends Error { constructor(code, message, status) { super(message); this.code = code; this.status = status; } }
+/* API base: '' = same server that served this page (default, works on any domain). Set PUBLIC_API_BASE on the
+   server only if the API lives on another host; it is delivered by /m/config.js. Never hard-code a domain here. */
+const API = String((window.APEX_CONFIG && window.APEX_CONFIG.API_BASE) || '').replace(/\/+$/, '');
+/* Key check goes in a header (never in the URL, so it can't end up in server/proxy logs). */
+const checkKey = (k) => fetch(API + '/v1/assets/search?q=A', { headers: { 'X-Apex-Key': k } }).then((r) => r.ok);
 const keyGet = () => safeLS.get('apex_access_key', '') || '';
 
 async function api(path, { method = 'GET', body, retries } = {}) {
@@ -111,7 +116,7 @@ async function api(path, { method = 'GET', body, retries } = {}) {
       const headers = { Accept: 'application/json' };
       const k = keyGet(); if (k) headers['X-Apex-Key'] = k;
       if (typeof body === 'string') headers['Content-Type'] = 'application/json';
-      const res = await fetch(path, { method, headers, body });
+      const res = await fetch(API + path, { method, headers, body });
       if (res.ok) return await res.json();
       let detail = ''; try { detail = (await res.json()).detail || ''; } catch {}
       if (typeof detail !== 'string') detail = JSON.stringify(detail);
@@ -699,7 +704,7 @@ function showLogin() {
   const err = h('div'); const inp = h('input', { class: 'input', type: 'password', autocomplete: 'off', placeholder: t('access_key'), 'aria-label': t('access_key') });
   const go = async () => {
     const k = inp.value.trim(); if (!k) return;
-    try { await fetch('/v1/auth/check?key=' + enc(k)).then((r) => { if (!r.ok) throw new Error('bad'); }); safeLS.set('apex_access_key', k); S.auth.ok = true; boot(); }
+    try { if (!(await checkKey(k))) throw new Error('bad'); safeLS.set('apex_access_key', k); S.auth.ok = true; boot(); }
     catch { err.replaceChildren(h('div', { class: 'notice err' }, t('bad_key'))); }
   };
   inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
@@ -710,11 +715,11 @@ function showLogin() {
 async function boot() {
   applyLangTheme();
   try {
-    const st = await fetch('/v1/auth/status').then((r) => r.json());
+    const st = await fetch(API + '/v1/auth/status').then((r) => r.json());
     S.auth.required = !!st.auth_required;
     if (S.auth.required) {
       const k = keyGet();
-      if (k) { const ok = await fetch('/v1/auth/check?key=' + enc(k)).then((r) => r.ok).catch(() => false); S.auth.ok = ok; if (!ok) safeLS.del('apex_access_key'); }
+      if (k) { const ok = await checkKey(k).catch(() => false); S.auth.ok = ok; if (!ok) safeLS.del('apex_access_key'); }
     } else S.auth.ok = true;
   } catch { S.auth.ok = true; }
   route();
@@ -723,7 +728,7 @@ window.addEventListener('hashchange', route);
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.installEvt = e; });
 window.addEventListener('online', () => document.querySelectorAll('.toast').forEach((x) => x.remove()));
 window.addEventListener('offline', () => toast(t('offline')));
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+if ('serviceWorker' in navigator) {                      // browsers expose the API only on secure origins, so no host check is needed
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 boot();

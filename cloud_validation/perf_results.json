@@ -1,0 +1,74 @@
+{
+ "rss_mb_idle": 101.3,
+ "rss_mb_after_analyses": 107.9,
+ "rss_mb_after_scan": 110.6,
+ "rss_mb_after_backtest": 110.8,
+ "analysis_json_kb": 14.5,
+ "m/index.html_wire_kb": 0.6,
+ "m/app.js_wire_kb": 17.3,
+ "m/app.css_wire_kb": 4.0,
+ "m/i18n.js_wire_kb": 4.3,
+ "m/config.js_wire_kb": 0.0,
+ "m/sw.js_wire_kb": 0.7,
+ "results": [
+  {
+   "test": "GET /v1/health",
+   "n": 15,
+   "median_ms": 1.8,
+   "p95_ms": 3.7,
+   "max_ms": 35.9
+  },
+  {
+   "test": "GET /m/ (mobile shell HTML, gzip)",
+   "n": 15,
+   "median_ms": 3.1,
+   "p95_ms": 4.4,
+   "max_ms": 9.1
+  },
+  {
+   "test": "GET /v1/analyses/auto/{symbol} (full engine, stubbed feed)",
+   "n": 30,
+   "median_ms": 28.9,
+   "p95_ms": 36.6,
+   "max_ms": 45.3
+  },
+  {
+   "test": "POST /v1/analyses/csv (160-row TradingView export)",
+   "n": 20,
+   "median_ms": 34.6,
+   "p95_ms": 37.1,
+   "max_ms": 42.3
+  },
+  {
+   "test": "POST /v1/analyses/csv (1,500-row export, ~6 years)",
+   "n": 10,
+   "median_ms": 59.4,
+   "p95_ms": 60.8,
+   "max_ms": 64.8
+  },
+  {
+   "test": "GET /v1/scan (35-symbol watch-list, refresh)",
+   "n": 1,
+   "median_ms": 1366.5,
+   "status": 200
+  },
+  {
+   "test": "GET /v1/scan (whole EGX universe, refresh)",
+   "n": 1,
+   "median_ms": 363.0,
+   "status": 200
+  },
+  {
+   "test": "GET /v1/backtest/COMI (2y walk-forward)",
+   "n": 1,
+   "median_ms": 395.1,
+   "status": 200
+  },
+  {
+   "test": "POST /v1/portfolio (3 holdings)",
+   "n": 1,
+   "median_ms": 76.7,
+   "status": 200
+  }
+ ]
+}
