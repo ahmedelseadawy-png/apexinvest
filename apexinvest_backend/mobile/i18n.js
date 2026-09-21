@@ -41,6 +41,10 @@ window.APEX_I18N = {
     disclaimer:"Educational decision-support, not financial advice.",
     hold:"HOLD", add_:"ADD", trim:"TRIM", exit_:"EXIT", positions:"Positions", total_value:"Total value", unrealized:"Unrealized P/L",
     backtest_this:"Backtest this strategy on history", exp_move:"Expected move", day:"Next day", week:"Next week", typical:"Typical", wide:"Wide",
+    exp_move_short_term:"Short-term volatility context", exp_move_info_note:"Informational only — this is not the long-term investment target.",
+    lt_title:"Long-term investment plan", lt_outlook:"Long-term outlook", lt_current_entry:"Current entry", lt_horizon:"Investment horizon",
+    lt_accum:"Accumulation zone", lt_targets:"Targets", lt_target:"Target", lt_major_target:"Major target",
+    lt_invalidation:"Long-term invalidation", lt_thesis:"Long-term thesis", lt_months:"months",
     offline:"Offline — showing the app shell only.", back:"Back"
   },
   ar: {
@@ -84,6 +88,10 @@ window.APEX_I18N = {
     disclaimer:"دعم قرار تعليمي وليس نصيحة مالية.",
     hold:"احتفاظ", add_:"زيادة", trim:"تخفيف", exit_:"خروج", positions:"المراكز", total_value:"القيمة الإجمالية", unrealized:"الربح/الخسارة غير المحققة",
     backtest_this:"اختبر هذه الاستراتيجية تاريخياً", exp_move:"الحركة المتوقعة", day:"اليوم التالي", week:"الأسبوع التالي", typical:"معتاد", wide:"واسع",
+    exp_move_short_term:"سياق التذبذب قصير الأجل", exp_move_info_note:"للعِلم فقط — هذا ليس الهدف الاستثماري طويل الأجل.",
+    lt_title:"خطة الاستثمار طويلة الأجل", lt_outlook:"النظرة طويلة الأجل", lt_current_entry:"حالة الدخول الحالية", lt_horizon:"الأفق الاستثماري",
+    lt_accum:"منطقة التجميع", lt_targets:"الأهداف", lt_target:"الهدف", lt_major_target:"الهدف الرئيسي",
+    lt_invalidation:"إلغاء الفكرة طويلة الأجل", lt_thesis:"الفرضية طويلة الأجل", lt_months:"أشهر",
     offline:"غير متصل — يعرض هيكل التطبيق فقط.", back:"رجوع"
   }
 };

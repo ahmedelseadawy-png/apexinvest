@@ -313,6 +313,13 @@ function renderDash(res) {
     h('div', { class: 'lbl' }, t('dash_final')), h('div', { class: 'big ' + ac }, act),
     h('div', { class: 'rs', dir: 'auto' }, p.reason || ''));
 
+  // Long-Term Investment Plan (additive, presentation-only): shown only for the
+  // "Grow long-term" objective, and only when the backend actually returned an
+  // enabled long_term_plan. If the field is missing/null/disabled (older API
+  // response, or not enough history), longTermCard() returns null and nothing
+  // is rendered here -- the rest of the page is unaffected either way.
+  const ltCard = res.objective === 'long_term' ? longTermCard(res) : null;
+
   const rg = d.regime;
   const regime = card(t('dash_regime'), rg ? [
     h('div', { class: 'kv' },
@@ -350,12 +357,63 @@ function renderDash(res) {
   };
   tabsDef.forEach(([k, lab]) => seg.append(h('button', { role: 'tab', 'aria-selected': String(S.tab === k), onclick: () => showTab(k) }, t(lab))));
 
-  v.replaceChildren(h('div', { class: 'dgrid' }, head, signal, regime, plan, h('div', { class: 'full' }, conf), h('div', { class: 'full' }, seg, tabBody)),
+  v.replaceChildren(h('div', { class: 'dgrid' }, head, signal, ltCard ? h('div', { class: 'full' }, ltCard) : null, regime, plan, h('div', { class: 'full' }, conf), h('div', { class: 'full' }, seg, tabBody)),
     h('p', { class: 'disc' }, d.disclaimer || t('disclaimer')));
   showTab(S.tab in TABS ? S.tab : 'details');
 }
 function kvBox(label, value, sub, cls) {
   return h('div', null, h('div', { class: 'lbl' }, label), h('div', { class: 'v num ' + (cls || '') }, value), sub ? h('div', { class: 's', dir: 'auto' }, sub) : null);
+}
+/* ---- Long-Term Investment Plan (presentation-only; every value below comes
+   straight from res.data.long_term_plan as the backend returns it) ---- */
+function longTermCard(res) {
+  const ltp = res.data.long_term_plan;
+  if (!ltp || !ltp.enabled) return null;
+  const outlookCls = { Constructive: 'buy', Neutral: 'wait', Weak: 'avoid' }[ltp.outlook] || '';
+  const entryStatus = String(ltp.entry_status || 'WAIT').toUpperCase();
+  const zones = ltp.accumulation_zones || [];
+  const targets = ltp.targets || [];
+  const inv = ltp.invalidation;
+
+  return card(t('lt_title'),
+    h('div', { class: 'kv two' },
+      kvBox(t('lt_outlook'), ltp.outlook || '—', '', outlookCls),
+      kvBox(t('lt_current_entry'), entryStatus, '', actionClass(entryStatus))),
+    ltp.horizon ? h('div', { class: 'stat' }, h('span', { class: 'k' }, t('lt_horizon')),
+      h('span', { class: 'v num' }, ltp.horizon.label || '—')) : null,
+    zones.length ? [
+      h('div', { class: 'lbl', style: 'margin:14px 0 6px' }, t('lt_accum')),
+      h('div', null, zones.map((z) => h('div', { class: 'stat' },
+        h('span', { class: 'k', dir: 'auto' }, z.basis || '—'),
+        h('span', { class: 'v num' }, `${fmt(z.zone_low)} – ${fmt(z.zone_high)}`)))),
+    ] : null,
+    targets.length ? [
+      h('div', { class: 'lbl', style: 'margin:14px 0 6px' }, t('lt_targets')),
+      h('div', { class: 'conf' }, targets.map((tgt, i) => targetRow(tgt, i, targets.length))),
+    ] : null,
+    inv ? [
+      h('div', { class: 'lbl', style: 'margin:14px 0 6px' }, t('lt_invalidation')),
+      h('div', { class: 'stat' }, h('span', { class: 'k', dir: 'auto' }, inv.basis || '—'),
+        h('span', { class: 'v num avoid' }, fmt(inv.price))),
+      h('div', { class: 'tiny faint' }, cap(inv.confidence)),
+    ] : null,
+    ltp.thesis ? [
+      h('div', { class: 'lbl', style: 'margin:14px 0 6px' }, t('lt_thesis')),
+      h('div', { class: 'small muted', dir: 'auto', style: 'line-height:1.55' }, ltp.thesis),
+    ] : null,
+    (ltp.notes || []).length ? h('div', { class: 'tiny muted', style: 'margin-top:10px' }, ltp.notes.join(' ')) : null);
+}
+function targetRow(tgt, i, n) {
+  const label = (i === 3 && n === 4) ? t('lt_major_target') : `${t('lt_target')} ${i + 1}`;
+  const span = (tgt.estimated_horizon_min_months != null && tgt.estimated_horizon_max_months != null)
+    ? `${tgt.estimated_horizon_min_months}–${tgt.estimated_horizon_max_months} ${t('lt_months')}` : '—';
+  return h('div', { class: 'pc' },
+    h('div', { class: 'row between' }, h('b', null, label), h('span', { class: 'num' }, fmt(tgt.target_price))),
+    h('div', { class: 'row between tiny muted' },
+      h('span', null, tgt.expected_return_pct != null ? `+${pct(tgt.expected_return_pct)}` : '—'),
+      h('span', null, span)),
+    h('div', { class: 'tiny faint', dir: 'auto' }, tgt.basis || ''),
+    h('div', { class: 'tiny faint' }, cap(tgt.confidence)));
 }
 function confRow(id, d) {
   const sig = (d.signals || []).find((s) => s.strategy_id === id);
@@ -456,7 +514,9 @@ const TABS = {
         h('div', { class: 'row between' }, h('b', null, cap(c.key)), h('span', { class: 'num small muted' }, `${Math.round(c.value * 100)}%`)),
         h('div', { class: 'bar' }, h('i', { style: `width:${Math.round(c.value * 100)}%` })), h('div', { class: 'tiny faint' }, c.note))) : h('div', { class: 'muted small' }, '—')),
       (p.entry != null && p.stop != null) ? sizeCard(p.entry, p.stop, ds.currency || 'EGP') : null,
-      em ? card(t('exp_move'), h('div', { class: 'tiny muted', style: 'margin-bottom:8px' }, em.basis || ''),
+      em ? card(res.objective === 'long_term' ? t('exp_move_short_term') : t('exp_move'),
+        res.objective === 'long_term' ? h('div', { class: 'notice info', style: 'margin-bottom:8px' }, t('exp_move_info_note'))
+          : h('div', { class: 'tiny muted', style: 'margin-bottom:8px' }, em.basis || ''),
         h('div', { class: 'tbl-wrap' }, h('table', null, h('thead', null, h('tr', null, h('th', null, ''), h('th', null, t('typical')), h('th', null, t('wide')))),
           h('tbody', null,
             h('tr', null, h('td', null, t('day')), h('td', { class: 'num' }, `${fmt(em.day.typical_low)} – ${fmt(em.day.typical_high)}`), h('td', { class: 'num' }, `${fmt(em.day.wide_low)} – ${fmt(em.day.wide_high)}`)),
