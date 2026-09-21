@@ -1,14 +1,16 @@
-"""Unified EGX market-data feed: EODHD first (broad coverage incl. small caps),
-Yahoo as the free fallback. Covers BOTH historical daily candles and the
-latest current/quote price — the same DATA_PROVIDER switch governs both, so a
-forced provider is a genuine single source of truth for price as well as
-history, not just history.
+"""Unified EGX market-data feed: Yahoo is the default/primary provider. EODHD
+is available only when explicitly selected — it is NOT used for normal
+operation, even if an EODHD token happens to be configured. (Reverted from a
+brief EODHD-first default after the configured EODHD account started hitting
+its daily quota (HTTP 402) under normal load, e.g. full-universe scans — see
+git history around "Restore Yahoo as default market data provider".)
 
-Everything that needs daily candles (single-symbol analysis, the scanner, the
-backtest) goes through ``fetch_daily`` here, and everything that needs a
-current price/quote goes through ``fetch_quote``, so improving coverage is a
-one-line switch and the rest of the app is untouched. Same contract as each
-adapter:
+Covers BOTH historical daily candles and the latest current/quote price — the
+same DATA_PROVIDER switch governs both. Everything that needs daily candles
+(single-symbol analysis, the scanner, the backtest) goes through
+``fetch_daily`` here, and everything that needs a current price/quote goes
+through ``fetch_quote``, so changing the provider is a one-line switch and the
+rest of the app is untouched. Same contract as each adapter:
 
     fetch_daily(symbol, lookback="1y") -> (DataFrame[open,high,low,close,volume], meta)
     fetch_quote(symbol) -> {symbol, price, prev_close, change_pct, as_of, currency}
@@ -16,15 +18,16 @@ adapter:
 Behaviour is controlled by the optional ``DATA_PROVIDER`` environment variable
 (identical rules for both functions):
 
-  * unset / ``auto`` (default, unchanged from before) — if an EODHD API key is
-    configured, try EODHD first; if EODHD has no data for the symbol OR errors,
-    fall back to Yahoo. If no key is configured, use Yahoo directly. If NEITHER
-    feed has the symbol, raise ``yahoo_egx.DataUnavailable`` (the API turns that
-    into a 404 — honest "no data", never a fabricated plan).
-  * ``eodhd`` — EODHD only. No Yahoo fallback: a failure raises
-    ``DataProviderError`` (a ``DataUnavailable`` subclass, so it still becomes a
-    clean 404) instead of silently substituting Yahoo data.
-  * ``yahoo`` — Yahoo only, even if an EODHD key is configured.
+  * unset / ``auto`` (default) / ``yahoo`` — Yahoo only. This is normal
+    operation: EODHD is never called here, regardless of whether an EODHD
+    token is configured. If Yahoo has no data for the symbol, raise
+    ``yahoo_egx.DataUnavailable`` (the API turns that into a 404 — honest
+    "no data", never a fabricated plan).
+  * ``eodhd`` — EODHD only, opt-in. No Yahoo fallback: a failure raises
+    ``DataProviderError`` (a ``DataUnavailable`` subclass, so it still becomes
+    a clean 404) instead of silently substituting Yahoo data. Use this only
+    when you deliberately want EODHD's broader small-cap coverage and have
+    quota for it.
 """
 from __future__ import annotations
 
@@ -59,9 +62,6 @@ def provider_mode() -> str:
 def fetch_daily(symbol: str, lookback: str = "1y", timeout: float = 10.0) -> tuple[pd.DataFrame, dict]:
     mode = _provider_mode()
 
-    if mode == "yahoo":
-        return yahoo_egx.fetch_daily(symbol, lookback=lookback, timeout=timeout)
-
     if mode == "eodhd":
         if eodhd_egx is None or not eodhd_egx.enabled():
             raise DataProviderError(
@@ -74,22 +74,10 @@ def fetch_daily(symbol: str, lookback: str = "1y", timeout: float = 10.0) -> tup
         except Exception as e:                      # network/HTTP/timeout/parse
             raise DataProviderError(f"EODHD error: {e}") from e
 
-    # mode == "auto" (or any unrecognised value): existing behaviour, unchanged.
-    errors: list[str] = []
-
-    if eodhd_egx is not None and eodhd_egx.enabled():
-        try:
-            return eodhd_egx.fetch_daily(symbol, lookback=lookback, timeout=timeout)
-        except DataUnavailable as e:
-            errors.append(f"EODHD: {e}")          # covered symbol? no — try Yahoo
-        except Exception as e:                     # network/HTTP/parse — try Yahoo
-            errors.append(f"EODHD error: {e}")
-
-    try:
-        return yahoo_egx.fetch_daily(symbol, lookback=lookback, timeout=timeout)
-    except DataUnavailable as e:
-        errors.append(f"Yahoo: {e}")
-        raise DataUnavailable("; ".join(errors))   # neither feed has it -> 404
+    # "auto" (default/unset) and "yahoo": Yahoo is the primary/default
+    # provider for normal operation. EODHD is opt-in only (DATA_PROVIDER=
+    # eodhd) — no EODHD call happens here, even if a token is configured.
+    return yahoo_egx.fetch_daily(symbol, lookback=lookback, timeout=timeout)
 
 
 def fetch_quote(symbol: str, timeout: float = 8.0) -> dict:
@@ -100,9 +88,6 @@ def fetch_quote(symbol: str, timeout: float = 8.0) -> dict:
     which provider actually answered."""
     mode = _provider_mode()
 
-    if mode == "yahoo":
-        return yahoo_egx.fetch_quote(symbol, timeout=timeout)
-
     if mode == "eodhd":
         if eodhd_egx is None or not eodhd_egx.enabled():
             raise DataProviderError(
@@ -115,19 +100,7 @@ def fetch_quote(symbol: str, timeout: float = 8.0) -> dict:
         except Exception as e:                      # network/HTTP/timeout/parse
             raise DataProviderError(f"EODHD error: {e}") from e
 
-    # mode == "auto" (or any unrecognised value): same fallback shape as fetch_daily.
-    errors: list[str] = []
-
-    if eodhd_egx is not None and eodhd_egx.enabled():
-        try:
-            return eodhd_egx.fetch_quote(symbol, timeout=timeout)
-        except DataUnavailable as e:
-            errors.append(f"EODHD: {e}")
-        except Exception as e:
-            errors.append(f"EODHD error: {e}")
-
-    try:
-        return yahoo_egx.fetch_quote(symbol, timeout=timeout)
-    except DataUnavailable as e:
-        errors.append(f"Yahoo: {e}")
-        raise DataUnavailable("; ".join(errors))
+    # "auto" (default/unset) and "yahoo": Yahoo is the primary/default
+    # provider for normal operation. EODHD is opt-in only (DATA_PROVIDER=
+    # eodhd) — no EODHD call happens here, even if a token is configured.
+    return yahoo_egx.fetch_quote(symbol, timeout=timeout)
