@@ -1,4 +1,7 @@
-"""EODHD adapter + unified feed fallback.
+"""EODHD adapter + unified feed routing.
+
+EODHD is the only production market-data provider (see market/feed.py) --
+Yahoo is never called from the production fetch path, in any mode.
 
 Hermetic: the parser is pure (fed a mock EODHD payload) and the feed-routing
 tests monkeypatch the adapters, so nothing hits the network.
@@ -63,62 +66,61 @@ def test_enabled_reflects_env(monkeypatch):
 
 
 # ---- unified feed routing ----------------------------------------------------
-# Yahoo is the default/primary provider (see market/feed.py). EODHD is opt-in
-# only, via DATA_PROVIDER=eodhd -- reverted after the configured EODHD account
-# hit its daily quota (HTTP 402) under normal load (full-universe scans).
+# EODHD is the ONLY production provider (see market/feed.py) -- restored as
+# default/primary after Yahoo proved unreliable for full-universe scanner
+# coverage. Yahoo is never called from the production fetch path, whatever
+# DATA_PROVIDER is set to, and there is no Yahoo fallback on EODHD failure.
 
 def _df():
     return pd.DataFrame({"open": [1, 2], "high": [2, 3], "low": [1, 1],
                          "close": [2, 3], "volume": [10, 20]})
 
 
-def test_feed_auto_mode_uses_yahoo_even_when_eodhd_enabled(monkeypatch):
-    """Default/auto behaviour: EODHD is never touched, even if a token is
-    configured and eodhd_egx.enabled() is True -- Yahoo is the primary
-    provider for normal operation."""
+def _yahoo_should_not_run(*a, **k):
+    raise AssertionError("Yahoo must never be called -- EODHD is the only production provider")
+
+
+def test_feed_auto_mode_uses_eodhd(monkeypatch):
+    """Default/auto behaviour (DATA_PROVIDER unset): EODHD answers directly,
+    Yahoo is never called."""
     monkeypatch.delenv("DATA_PROVIDER", raising=False)
-    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
-    def eodhd_should_not_run(*a, **k):
-        raise AssertionError("EODHD must not be called in default/auto mode")
-    monkeypatch.setattr(eodhd_egx, "fetch_daily", eodhd_should_not_run)
-    monkeypatch.setattr(yahoo_egx, "fetch_daily",
-                        lambda sym, lookback="1y", timeout=10.0: (_df(), {"source": "Yahoo Finance (EGX end-of-day, .CA)"}))
-    df, meta = feed.fetch_daily("COMI")
-    assert "Yahoo" in meta["source"] and len(df) == 2
-
-
-def test_feed_uses_eodhd_only_when_explicitly_forced(monkeypatch):
-    """EODHD is opt-in: it is only ever called when DATA_PROVIDER=eodhd."""
-    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
     monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
     monkeypatch.setattr(eodhd_egx, "fetch_daily",
                         lambda sym, lookback="1y", timeout=10.0: (_df(), {"source": "EODHD (EGX end-of-day)"}))
-    def yahoo_should_not_run(*a, **k):
-        raise AssertionError("Yahoo must not be called when DATA_PROVIDER=eodhd")
-    monkeypatch.setattr(yahoo_egx, "fetch_daily", yahoo_should_not_run)
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", _yahoo_should_not_run)
     df, meta = feed.fetch_daily("COMI")
     assert "EODHD" in meta["source"] and len(df) == 2
 
 
-def test_feed_uses_yahoo_when_eodhd_disabled(monkeypatch):
+def test_feed_eodhd_forced_mode_uses_eodhd(monkeypatch):
+    """DATA_PROVIDER=eodhd resolves identically to the default -- both are
+    EODHD, since it is the only production provider either way."""
+    monkeypatch.setenv("DATA_PROVIDER", "eodhd")
+    monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
+    monkeypatch.setattr(eodhd_egx, "fetch_daily",
+                        lambda sym, lookback="1y", timeout=10.0: (_df(), {"source": "EODHD (EGX end-of-day)"}))
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", _yahoo_should_not_run)
+    df, meta = feed.fetch_daily("COMI")
+    assert "EODHD" in meta["source"] and len(df) == 2
+
+
+def test_feed_raises_controlled_error_when_no_eodhd_token(monkeypatch):
+    """No Yahoo fallback: without an EODHD token configured, fetch_daily
+    raises a controlled DataProviderError instead of silently using Yahoo."""
     monkeypatch.delenv("DATA_PROVIDER", raising=False)
     monkeypatch.setattr(eodhd_egx, "enabled", lambda: False)
-    monkeypatch.setattr(yahoo_egx, "fetch_daily",
-                        lambda sym, lookback="1y", timeout=10.0: (_df(), {"source": "Yahoo Finance (EGX end-of-day, .CA)"}))
-    df, meta = feed.fetch_daily("COMI")
-    assert "Yahoo" in meta["source"]
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", _yahoo_should_not_run)
+    with pytest.raises(feed.DataProviderError):
+        feed.fetch_daily("COMI")
 
 
-def test_feed_raises_when_yahoo_has_no_data(monkeypatch):
-    """Auto mode's only data source is Yahoo, so a Yahoo failure raises
-    directly -- EODHD's own (mocked-failing) state is irrelevant here since
-    it is never consulted in auto mode."""
+def test_feed_raises_when_eodhd_has_no_data(monkeypatch):
+    """An EODHD failure raises directly -- there is no Yahoo fallback in
+    production, in auto mode or otherwise."""
     monkeypatch.delenv("DATA_PROVIDER", raising=False)
     monkeypatch.setattr(eodhd_egx, "enabled", lambda: True)
-    def eodhd_should_not_run(*a, **k):
-        raise AssertionError("EODHD must not be called in default/auto mode")
-    monkeypatch.setattr(eodhd_egx, "fetch_daily", eodhd_should_not_run)
-    monkeypatch.setattr(yahoo_egx, "fetch_daily",
-                        lambda *a, **k: (_ for _ in ()).throw(yahoo_egx.DataUnavailable("no yahoo")))
-    with pytest.raises(yahoo_egx.DataUnavailable):
+    monkeypatch.setattr(eodhd_egx, "fetch_daily",
+                        lambda *a, **k: (_ for _ in ()).throw(yahoo_egx.DataUnavailable("no eodhd")))
+    monkeypatch.setattr(yahoo_egx, "fetch_daily", _yahoo_should_not_run)
+    with pytest.raises(feed.DataProviderError):
         feed.fetch_daily("ZZZZ")
