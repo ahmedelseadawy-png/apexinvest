@@ -321,6 +321,22 @@ def analyze_symbol(symbol: str, objective: Objective, *, fetcher=None,
             core["expected_move"] = _em.compute(df, last)
         except Exception:
             core["expected_move"] = None
+        # Long-Term Investment Target Engine (additive only — see engines/
+        # long_term_plan.py's module docstring). Always attached, regardless of
+        # `objective`, so it's backward compatible for any API consumer and the
+        # UI can show it whenever it's useful; it never touches the existing
+        # BUY/WAIT/AVOID action, which it only reads (never overrides) for
+        # `entry_status`. A failure here can never fail the rest of the analysis.
+        from .engines import long_term_plan as _ltp
+        try:
+            ltp = _ltp.build(df, last)
+            if ltp.get("enabled"):
+                entry_status = core.get("plan", {}).get("action", "WAIT")
+                ltp["entry_status"] = entry_status
+                ltp["thesis"] = _ltp.thesis_for(ltp["outlook"], entry_status)
+            core["long_term_plan"] = ltp
+        except Exception:
+            core["long_term_plan"] = {"enabled": False, "reason": _ltp.INSUFFICIENT_DATA_MSG}
         core["auto"] = {
             "objective": objective.value,
             "recommended": wanted,
