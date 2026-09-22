@@ -403,14 +403,27 @@ def compose_wait_context(action: str, tc: dict, scenarios: dict | None) -> dict:
     else:
         why = "There is not yet enough confirming evidence for an entry."
 
-    next_trigger = None
+    # Mention BOTH live paths when both exist (spec #6's own example: "Watch
+    # for pullback to support OR confirmed breakout") rather than picking
+    # just one -- still built entirely from already-computed scenario fields.
     scenarios = scenarios or {}
-    for key in ("breakout", "breakout_retest", "pullback"):
-        sc = scenarios.get(key)
-        if sc and sc.get("trigger"):
-            next_trigger = sc["trigger"]
-            break
-    if next_trigger is None and missing:
+    paths = []
+    pb = scenarios.get("pullback")
+    if pb and pb.get("zone"):
+        paths.append(f"a pullback into {pb['zone'][0]}–{pb['zone'][1]}")
+    bo = scenarios.get("breakout")
+    if bo and bo.get("trigger"):
+        paths.append(f"a confirmed breakout ({bo['trigger'].lower()})")
+    if not paths:
+        bor = scenarios.get("breakout_retest")
+        if bor and bor.get("retest_zone"):
+            paths.append(f"a successful retest of {bor['retest_zone'][0]}–{bor['retest_zone'][1]}")
+
+    if paths:
+        next_trigger = "Watch for " + " OR ".join(paths[:2]) + "."
+    elif missing:
         next_trigger = "Improvement in: " + ", ".join(m.split(":")[0] for m in missing[:2])
+    else:
+        next_trigger = None
 
     return {"applicable": True, "why": why, "next_trigger": next_trigger}

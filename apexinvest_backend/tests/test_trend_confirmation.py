@@ -178,3 +178,34 @@ def test_trend_confirmation_attached_and_never_alters_existing_plan(monkeypatch)
     assert out_normal["plan"] == out_forced["plan"]
     assert out_normal["signals"] == out_forced["signals"]
     assert out_normal["regime"] == out_forced["regime"]
+
+
+# --------------------------------------------------------------------------- #
+# F. WAIT with a next_trigger that mentions BOTH live paths when both exist
+# --------------------------------------------------------------------------- #
+
+def test_wait_context_next_trigger_mentions_pullback_and_breakout_together():
+    scenarios = {
+        "pullback": {"zone": [9.5, 9.7]},
+        "breakout": {"trigger": "Close above 12.0"},
+    }
+    tc_dict = {"primary_trend": "Bullish", "missing_factors": []}
+    ctx = tc.compose_wait_context("WAIT", tc_dict, scenarios)
+    assert ctx["applicable"] is True
+    assert "9.5" in ctx["next_trigger"] and "9.7" in ctx["next_trigger"]
+    assert "12.0" in ctx["next_trigger"]
+    assert " OR " in ctx["next_trigger"]
+
+
+def test_wait_context_next_trigger_single_path_when_only_one_exists():
+    scenarios = {"breakout": {"trigger": "Close above 12.0"}}
+    tc_dict = {"primary_trend": "Bullish", "missing_factors": []}
+    ctx = tc.compose_wait_context("WAIT", tc_dict, scenarios)
+    assert "12.0" in ctx["next_trigger"]
+    assert " OR " not in ctx["next_trigger"]
+
+
+def test_wait_context_not_applicable_for_buy_or_avoid():
+    for action in ("BUY", "AVOID"):
+        ctx = tc.compose_wait_context(action, {"primary_trend": "Bullish"}, {})
+        assert ctx == {"applicable": False, "why": None, "next_trigger": None}

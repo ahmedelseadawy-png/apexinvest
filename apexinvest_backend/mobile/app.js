@@ -476,10 +476,11 @@ function scenarioStateClass(state) {
   return { CONFIRMED: 'buy', VALIDATED: 'buy', TRIGGERED: 'teal', RETESTING: 'teal',
           FAILED: 'avoid', INVALIDATED: 'avoid' }[state] || '';
 }
-function scenarioBlock(title, statRows, state) {
+function scenarioBlock(title, statRows, state, note) {
   return h('div', { class: 'pc', style: 'padding:10px 0' },
     h('div', { class: 'row between' }, h('b', null, title), pill(cap(state || ''), scenarioStateClass(state))),
-    h('div', null, statRows.filter(Boolean)));
+    h('div', null, statRows.filter(Boolean)),
+    note ? h('div', { class: 'tiny muted', style: 'margin-top:6px;line-height:1.5' }, note) : null);
 }
 function tradeScenariosCard(res) {
   const sc = res.data.trade_scenarios;
@@ -487,12 +488,20 @@ function tradeScenariosCard(res) {
   const blocks = [];
   if (sc.breakout) {
     const b = sc.breakout;
+    // Compact single note combining "don't chase" guidance with whichever
+    // entry/invalidation explanation applies -- keeps the card readable on
+    // mobile instead of stacking several small text blocks.
+    const noteParts = [];
+    if (b.entry == null && b.entry_note) noteParts.push(b.entry_note);
+    noteParts.push(...(b.after_breakout || []));
+    if (!b.invalidation && b.invalidation_note) noteParts.push(b.invalidation_note);
     blocks.push(scenarioBlock(t('sc_breakout'), [
       stat(t('sc_resistance'), fmt(b.resistance)),
       stat(t('sc_trigger'), b.trigger),
       b.entry != null ? stat(t('sc_entry'), fmt(b.entry)) : null,
       b.risk_stop != null ? stat(t('sc_stop'), fmt(b.risk_stop), 'avoid') : null,
-    ], b.state));
+      b.invalidation ? stat(t('invalidation'), b.invalidation, 'avoid') : null,
+    ], b.state, noteParts.join(' ')));
   }
   if (sc.breakout_retest) {
     const r = sc.breakout_retest;

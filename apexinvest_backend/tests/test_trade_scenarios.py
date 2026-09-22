@@ -75,6 +75,57 @@ def test_breakout_state_confirmed_after_multiple_closes_above():
 
 
 # --------------------------------------------------------------------------- #
+# A. Breakout with entry AVAILABLE (chosen setup is an actual confirmation
+#    breakout, so the risk engine's own entry/stop are reused verbatim)
+# --------------------------------------------------------------------------- #
+
+def test_breakout_with_entry_available_reuses_existing_entry_and_stop():
+    df = _df_below_resistance()
+    price = float(df["close"].iloc[-1])
+    plan = _fake_plan(entry_type="confirmation", confirmation_entry=12.05, stop=11.7,
+                       entry_levels={"resistances": [12.0], "supports": [9.5], "atr": 0.2})
+    out = tsc.build(df, price, plan, tc=None)
+    b = out["breakout"]
+    assert b["entry"] == 12.05
+    assert b["entry_note"] is None
+    assert b["risk_stop"] == 11.7
+    assert b["risk_note"] is None
+    # Even with an entry available, the "don't chase" guidance is still shown.
+    assert any("chase" in line.lower() for line in b["after_breakout"])
+
+
+# --------------------------------------------------------------------------- #
+# B. Breakout with entry NULL -- must clearly explain what happens next
+#    instead of leaving a bare null, and must never invent a number.
+# --------------------------------------------------------------------------- #
+
+def test_breakout_with_entry_null_explains_after_breakout_and_invalidation():
+    df = _df_below_resistance()
+    price = float(df["close"].iloc[-1])
+    plan = _fake_plan(entry_levels={"resistances": [12.0], "supports": [9.5], "atr": 0.2})
+    out = tsc.build(df, price, plan, tc=None)
+    b = out["breakout"]
+    assert b["entry"] is None
+    assert b["entry_note"] == "Entry will be set by the entry optimizer once this triggers."
+    assert len(b["after_breakout"]) >= 2
+    assert any("confirmation" in line.lower() or "retest" in line.lower() for line in b["after_breakout"])
+    assert any("chase" in line.lower() for line in b["after_breakout"])
+    # Invalidation reuses the real nearest support -- never invented.
+    assert b["invalidation"] == "Close back below 9.5"
+    assert b["invalidation_note"] is None
+
+
+def test_breakout_invalidation_omitted_not_invented_when_no_support_exists():
+    df = _df_below_resistance()
+    price = float(df["close"].iloc[-1])
+    plan = _fake_plan(entry_levels={"resistances": [12.0], "supports": [], "atr": 0.2})
+    out = tsc.build(df, price, plan, tc=None)
+    b = out["breakout"]
+    assert b["invalidation"] is None
+    assert b["invalidation_note"] == "No structural support identified below to define invalidation."
+
+
+# --------------------------------------------------------------------------- #
 # E. Breakout + retest scenario
 # --------------------------------------------------------------------------- #
 
@@ -93,13 +144,33 @@ def test_breakout_retest_zone_derived_from_resistance_and_atr():
     assert out["breakout_retest"]["status"] in ("Testing", "Waiting for confirmation", "Confirmed", "Failed")
 
 
-def test_retest_not_shown_without_any_breakout_evidence():
+def test_retest_zone_shown_proactively_before_any_breakout_evidence():
+    """UX clarification: a retest zone is a forward-looking projection from
+    resistance + ATR, so it's shown alongside 'breakout' even before price
+    has broken out -- never fabricated (still derived from real resistance/
+    ATR), just anticipatory. State/status reflect that nothing has happened
+    yet, distinct from an in-progress or validated retest."""
     df = _df_below_resistance()
     price = float(df["close"].iloc[-1])
     plan = _fake_plan(entry_levels={"resistances": [12.0], "supports": [9.5], "atr": 0.2,
                                      "reclaimed": False})
     out = tsc.build(df, price, plan, tc=None)
-    assert "breakout_retest" not in out   # nothing to retest yet -- must be omitted, not fabricated
+    assert "breakout_retest" in out
+    assert out["breakout_retest"]["state"] == "WATCHING"
+    assert out["breakout_retest"]["status"] == "Waiting for confirmation"
+    zlo, zhi = out["breakout_retest"]["retest_zone"]
+    assert zlo < 12.0 < zhi
+
+
+def test_retest_zone_absent_when_no_resistance_at_all():
+    """Only omitted (never fabricated) when there is truly no resistance to
+    derive it from -- in that case there's no breakout scenario either."""
+    df = _ohlc(np.full(200, 10.0) + np.tile([0.001, -0.001], 100))
+    price = float(df["close"].iloc[-1])
+    plan = _fake_plan(entry_levels={"resistances": [], "supports": [], "atr": 0.01})
+    out = tsc.build(df, price, plan, tc=None)
+    assert "breakout" not in out
+    assert "breakout_retest" not in out
 
 
 # --------------------------------------------------------------------------- #
@@ -256,3 +327,31 @@ def test_backward_compatible_existing_top_level_keys_present():
     assert "trend_confirmation" in out
     assert "trade_scenarios" in out
     assert "wait_context" in out
+
+
+# --------------------------------------------------------------------------- #
+# G / H / I. Existing BUY / WAIT / AVOID results unchanged by this feature
+# --------------------------------------------------------------------------- #
+
+def test_existing_avoid_result_unchanged_by_new_layers(monkeypatch):
+    """A clear downtrend triggers risk.py's own objective-vs-regime AVOID gate
+    (long objective conflicts with a downtrend) -- this feature must not
+    alter that action or its reason, whether it succeeds or is forced to fail."""
+    df = _ohlc(np.linspace(20.0, 10.0, 220))
+    out_normal = analyze_symbol("TEST", Objective.SWING, fetcher=_fetcher(df))
+    assert out_normal["plan"]["action"] == "AVOID"
+
+    monkeypatch.setattr(tsc, "build", lambda *a, **k: {"available": False, "reason": "forced"})
+    out_forced = analyze_symbol("TEST", Objective.SWING, fetcher=_fetcher(df))
+    assert out_forced["plan"]["action"] == "AVOID"
+    assert out_normal["plan"] == out_forced["plan"]
+
+
+def test_existing_buy_result_unchanged_by_new_layers(monkeypatch):
+    df = _ohlc(np.tile([9.6, 10.4, 9.7, 10.3, 9.55, 10.45, 9.65, 10.35], 28))  # clean base -> BUY-eligible
+    out_normal = analyze_symbol("TEST", Objective.SWING, fetcher=_fetcher(df))
+
+    monkeypatch.setattr(tsc, "build", lambda *a, **k: {"available": False, "reason": "forced"})
+    out_forced = analyze_symbol("TEST", Objective.SWING, fetcher=_fetcher(df))
+    assert out_normal["plan"]["action"] == out_forced["plan"]["action"]
+    assert out_normal["plan"] == out_forced["plan"]

@@ -83,7 +83,7 @@ def _bars_beyond(closes: pd.Series, level: float, *, above: bool) -> int:
     return n
 
 
-def _breakout_scenario(df, price, atr_v, resistance, plan_dict, tc_hint) -> dict:
+def _breakout_scenario(df, price, atr_v, resistance, supports, plan_dict, tc_hint) -> dict:
     closes = df["close"].astype(float)
     bars_above = _bars_beyond(closes, resistance, above=True)
     if price <= resistance:
@@ -105,29 +105,52 @@ def _breakout_scenario(df, price, atr_v, resistance, plan_dict, tc_hint) -> dict
     if mom_status and mom_status != "Unavailable":
         confirmation.append("Momentum confirmation (MACD/RSI supportive)")
 
+    # UX clarification: a breakout is never "buy now" -- always spell out what
+    # to do next, and never leave a null entry unexplained. Reuses the SAME
+    # nearest support the breakdown scenario already uses for invalidation --
+    # no new level is computed here.
+    after_breakout = [
+        "Wait for confirmation: a hold above the level, ideally with a retest.",
+        "Do not chase the initial breakout candle.",
+    ]
+    invalidation_level = supports[-1] if supports else None
+
     return {
         "resistance": _r(resistance),
         "trigger": f"Close above {_r(resistance)}",
         "confirmation": confirmation,
+        "after_breakout": after_breakout,
         "entry": _r(confirmation_entry),
         "entry_note": None if confirmation_entry is not None else
                      "Entry will be set by the entry optimizer once this triggers.",
         "risk_stop": _r(stop),
         "risk_note": None if stop is not None else
                     "Stop will be set by the existing risk engine once this setup is chosen.",
+        "invalidation": (f"Close back below {_r(invalidation_level)}"
+                         if invalidation_level is not None else None),
+        "invalidation_note": None if invalidation_level is not None else
+                             "No structural support identified below to define invalidation.",
         "state": state,
     }
 
 
-def _retest_scenario(df, price, atr_v, resistance, breakout_state, reclaimed) -> dict | None:
-    if breakout_state == "WATCHING" and not reclaimed:
-        return None   # no breakout evidence at all yet -- nothing to retest
+def _retest_scenario(df, price, atr_v, resistance, breakout_state, reclaimed) -> dict:
+    """The retest zone is shown PROACTIVELY, before any breakout has actually
+    happened -- it's derived purely from resistance + ATR (both already
+    computed), so there is real structure to hang it on even in the
+    WATCHING state. It is never fabricated: if `resistance`/`atr_v` weren't
+    real numbers this wouldn't be called at all (see _build's `if
+    resistances:` gate)."""
     zone_low = resistance - 0.25 * atr_v
     zone_high = resistance + 0.5 * atr_v
     closes = df["close"].astype(float)
     last = float(closes.iloc[-1])
 
-    if zone_low <= last <= zone_high:
+    if breakout_state == "WATCHING" and not reclaimed:
+        # No breakout evidence yet -- this is a forward-looking projection of
+        # where a retest would land if/when the breakout happens.
+        state, status = "WATCHING", "Waiting for confirmation"
+    elif zone_low <= last <= zone_high:
         state, status = "RETESTING", "Testing"
     elif last > zone_high:
         # already back above the zone -- did it dip into the zone and hold recently?
@@ -143,7 +166,7 @@ def _retest_scenario(df, price, atr_v, resistance, breakout_state, reclaimed) ->
     return {
         "resistance": _r(resistance),
         "retest_zone": [_r(zone_low), _r(zone_high)],
-        "confirmation": ["Price holds the zone", "No confirmed breakdown below the zone",
+        "confirmation": ["Price holds the former resistance zone", "No confirmed breakdown below the zone",
                          "Volume stabilizes or improves", "Momentum remains supportive"],
         "status": status,
         "state": state,
@@ -244,15 +267,15 @@ def _build(df: pd.DataFrame, current_price, plan_dict, tc) -> dict:
 
     breakout = None
     if resistances:
-        breakout = _breakout_scenario(df, price, atr_v, resistances[0], plan_dict, tc)
+        breakout = _breakout_scenario(df, price, atr_v, resistances[0], supports, plan_dict, tc)
         out["breakout"] = breakout
-
-    if resistances:
-        retest = _retest_scenario(df, price, atr_v, resistances[0],
-                                  breakout["state"] if breakout else "WATCHING",
-                                  bool(levels.get("reclaimed")))
-        if retest:
-            out["breakout_retest"] = retest
+        # Retest zone is always shown alongside a real breakout scenario
+        # (forward-looking before it triggers, live once it does) -- never a
+        # separate fabricated number; omitted entirely only when there's no
+        # resistance/ATR to derive it from at all (see the `if resistances:`
+        # gate above -- in that case there is no breakout scenario either).
+        out["breakout_retest"] = _retest_scenario(
+            df, price, atr_v, resistances[0], breakout["state"], bool(levels.get("reclaimed")))
 
     pullback = _pullback_scenario(df, price, atr_v, supports, levels, plan_dict)
     if pullback:
