@@ -309,9 +309,20 @@ function renderDash(res) {
     h('div', { class: 'tiny muted', dir: 'auto', style: 'margin-top:8px;line-height:1.5' },
       `${t('last_update')}: `, h('b', { class: 'num' }, asof || '—'), ds.data_age_days != null ? ` (${ds.data_age_days}d)` : '', ` · ${t('source')}: ${ds.provider || ds.source || '—'}`));
 
+  // "Why am I waiting? / What would change this?" (additive; see
+  // trend_confirmation.compose_wait_context on the backend). Only populated
+  // when the final action is WAIT; wc.applicable is false otherwise, and a
+  // missing/older-API wait_context is handled the same as "not applicable".
+  const wc = d.wait_context;
   const signal = h('section', { class: 'card signal ' + ac },
     h('div', { class: 'lbl' }, t('dash_final')), h('div', { class: 'big ' + ac }, act),
-    h('div', { class: 'rs', dir: 'auto' }, p.reason || ''));
+    h('div', { class: 'rs', dir: 'auto' }, p.reason || ''),
+    (wc && wc.applicable && wc.why) ? h('div', { style: 'margin-top:10px' }, [
+      h('div', { class: 'lbl', style: 'margin-bottom:3px' }, t('why_wait')),
+      h('div', { class: 'small', dir: 'auto', style: 'line-height:1.5' }, wc.why),
+      wc.next_trigger ? h('div', { class: 'tiny muted', style: 'margin-top:6px', dir: 'auto' },
+        h('b', null, t('next_trigger') + ': '), wc.next_trigger) : null,
+    ]) : null);
 
   // Long-Term Investment Plan (additive, presentation-only): shown only for the
   // "Grow long-term" objective, and only when the backend actually returned an
@@ -319,6 +330,12 @@ function renderDash(res) {
   // response, or not enough history), longTermCard() returns null and nothing
   // is rendered here -- the rest of the page is unaffected either way.
   const ltCard = res.objective === 'long_term' ? longTermCard(res) : null;
+
+  // Trend & Confirmation + Trade Scenarios (additive, presentation-only):
+  // shown for any objective whenever the backend has a usable read. Neither
+  // ever appears when the underlying data is unavailable -- no empty cards.
+  const tcCard = trendConfirmationCard(res);
+  const scCard = tradeScenariosCard(res);
 
   const rg = d.regime;
   const regime = card(t('dash_regime'), rg ? [
@@ -357,7 +374,10 @@ function renderDash(res) {
   };
   tabsDef.forEach(([k, lab]) => seg.append(h('button', { role: 'tab', 'aria-selected': String(S.tab === k), onclick: () => showTab(k) }, t(lab))));
 
-  v.replaceChildren(h('div', { class: 'dgrid' }, head, signal, ltCard ? h('div', { class: 'full' }, ltCard) : null, regime, plan, h('div', { class: 'full' }, conf), h('div', { class: 'full' }, seg, tabBody)),
+  v.replaceChildren(h('div', { class: 'dgrid' }, head, signal,
+    tcCard ? h('div', { class: 'full' }, tcCard) : null,
+    scCard ? h('div', { class: 'full' }, scCard) : null,
+    ltCard ? h('div', { class: 'full' }, ltCard) : null, regime, plan, h('div', { class: 'full' }, conf), h('div', { class: 'full' }, seg, tabBody)),
     h('p', { class: 'disc' }, d.disclaimer || t('disclaimer')));
   showTab(S.tab in TABS ? S.tab : 'details');
 }
@@ -414,6 +434,94 @@ function targetRow(tgt, i, n) {
       h('span', null, span)),
     h('div', { class: 'tiny faint', dir: 'auto' }, tgt.basis || ''),
     h('div', { class: 'tiny faint' }, cap(tgt.confidence)));
+}
+/* ---- Trend & Confirmation (presentation-only; values come straight from
+   res.data.trend_confirmation) ---- */
+function statusPillClass(val) {
+  if (['Bullish', 'Confirming', 'Strong', 'Improving'].includes(val)) return 'buy';
+  if (['Bearish', 'Not Confirming', 'Weak', 'Weakening', 'Overbought', 'Oversold'].includes(val)) return 'avoid';
+  return '';
+}
+function trendConfirmationCard(res) {
+  const tc = res.data.trend_confirmation;
+  if (!tc || !tc.primary_trend || tc.primary_trend === 'Unavailable') return null;
+  const trendCls = { Bullish: 'buy', Bearish: 'avoid' }[tc.primary_trend] || 'wait';
+  const rows = [
+    [t('tc_structure'), tc.structure_status], [t('tc_ema'), tc.ema_alignment],
+    [t('tc_momentum'), tc.momentum_status], [t('tc_macd'), tc.macd_status],
+    [t('tc_adx'), tc.adx_status], [t('tc_volume'), tc.volume_status],
+    [t('tc_market'), tc.market_alignment],
+  ].filter(([, val]) => val && val !== 'Unavailable');
+  return card(t('tc_title'),
+    h('div', { class: 'row between wrap', style: 'margin-bottom:8px' },
+      h('div', null, h('div', { class: 'lbl' }, t('tc_trend')), h('div', { class: 'big ' + trendCls, style: 'font-size:20px;margin-top:2px' }, tc.primary_trend)),
+      tc.confirmation_score != null ? h('div', { style: 'text-align:end' },
+        h('div', { class: 'v num', style: 'font-size:19px;font-weight:800' }, `${tc.confirmation_score}/100`),
+        h('div', { class: 'tiny faint' }, tc.confirmation_strength)) : null),
+    h('div', { class: 'conf' }, rows.map(([label, val]) => h('div', { class: 'crow' },
+      h('div', { class: 'nm' }, label), pill(val, statusPillClass(val))))),
+    (tc.confirmed_factors || []).length ? h('div', { style: 'margin-top:10px' },
+      h('div', { class: 'lbl', style: 'margin-bottom:5px' }, t('tc_confirmed')),
+      h('div', { class: 'ls' }, tc.confirmed_factors.map((f) => pill('✓ ' + f, 'buy')))) : null,
+    (tc.missing_factors || []).length ? h('div', { style: 'margin-top:8px' },
+      h('div', { class: 'lbl', style: 'margin-bottom:5px' }, t('tc_missing')),
+      h('div', { class: 'ls' }, tc.missing_factors.map((f) => pill('○ ' + f)))) : null,
+    tc.summary ? h('div', { class: 'tiny muted', style: 'margin-top:10px;line-height:1.5', dir: 'auto' }, tc.summary) : null,
+    h('div', { class: 'tiny faint', style: 'margin-top:8px' }, t('tc_disclaimer')));
+}
+
+/* ---- Trade Scenarios (presentation-only; values come straight from
+   res.data.trade_scenarios) ---- */
+function scenarioStateClass(state) {
+  return { CONFIRMED: 'buy', VALIDATED: 'buy', TRIGGERED: 'teal', RETESTING: 'teal',
+          FAILED: 'avoid', INVALIDATED: 'avoid' }[state] || '';
+}
+function scenarioBlock(title, statRows, state) {
+  return h('div', { class: 'pc', style: 'padding:10px 0' },
+    h('div', { class: 'row between' }, h('b', null, title), pill(cap(state || ''), scenarioStateClass(state))),
+    h('div', null, statRows.filter(Boolean)));
+}
+function tradeScenariosCard(res) {
+  const sc = res.data.trade_scenarios;
+  if (!sc || !sc.available) return null;
+  const blocks = [];
+  if (sc.breakout) {
+    const b = sc.breakout;
+    blocks.push(scenarioBlock(t('sc_breakout'), [
+      stat(t('sc_resistance'), fmt(b.resistance)),
+      stat(t('sc_trigger'), b.trigger),
+      b.entry != null ? stat(t('sc_entry'), fmt(b.entry)) : null,
+      b.risk_stop != null ? stat(t('sc_stop'), fmt(b.risk_stop), 'avoid') : null,
+    ], b.state));
+  }
+  if (sc.breakout_retest) {
+    const r = sc.breakout_retest;
+    blocks.push(scenarioBlock(t('sc_retest'), [
+      stat(t('sc_zone'), `${fmt(r.retest_zone[0])}–${fmt(r.retest_zone[1])}`),
+      stat(t('sc_status'), r.status),
+    ], r.state));
+  }
+  if (sc.pullback) {
+    const pb = sc.pullback;
+    blocks.push(scenarioBlock(t('sc_pullback'), [
+      stat(t('sc_zone'), `${fmt(pb.zone[0])}–${fmt(pb.zone[1])}`),
+      stat(t('sc_basis'), pb.basis), stat(t('sc_status'), pb.status),
+    ], pb.state));
+  }
+  if (sc.failed_breakout) {
+    const fb = sc.failed_breakout;
+    blocks.push(scenarioBlock(t('sc_failed'), [
+      stat(t('sc_level'), fmt(fb.level)), stat(t('sc_status'), fb.status),
+    ], fb.state));
+  }
+  if (sc.breakdown) {
+    const bd = sc.breakdown;
+    blocks.push(scenarioBlock(t('sc_breakdown'), [
+      stat(t('sc_support'), fmt(bd.support)), stat(t('sc_trigger'), bd.trigger),
+    ], bd.state));
+  }
+  if (!blocks.length) return null;
+  return card(t('sc_title'), blocks);
 }
 function confRow(id, d) {
   const sig = (d.signals || []).find((s) => s.strategy_id === id);

@@ -45,6 +45,15 @@ window.APEX_I18N = {
     lt_title:"Long-term investment plan", lt_outlook:"Long-term outlook", lt_current_entry:"Current entry", lt_horizon:"Investment horizon",
     lt_accum:"Accumulation zone", lt_targets:"Targets", lt_target:"Target", lt_major_target:"Major target",
     lt_invalidation:"Long-term invalidation", lt_thesis:"Long-term thesis", lt_months:"months",
+    why_wait:"Why?", next_trigger:"Next trigger",
+    tc_title:"Trend & confirmation", tc_trend:"Trend", tc_structure:"Structure", tc_ema:"EMA alignment",
+    tc_momentum:"Momentum", tc_macd:"MACD", tc_adx:"ADX", tc_volume:"Volume", tc_market:"Market alignment",
+    tc_confirmed:"Confirmed", tc_missing:"Still needed",
+    tc_disclaimer:"A measure of how much available evidence agrees with the trend — not a probability of profit or a substitute for the final signal.",
+    sc_title:"Trade scenarios", sc_breakout:"Breakout", sc_retest:"Breakout + retest", sc_pullback:"Pullback",
+    sc_failed:"Failed breakout", sc_breakdown:"Breakdown", sc_resistance:"Resistance", sc_support:"Support",
+    sc_trigger:"Trigger", sc_entry:"Entry", sc_stop:"Stop", sc_zone:"Zone", sc_basis:"Basis",
+    sc_status:"Status", sc_level:"Level",
     offline:"Offline — showing the app shell only.", back:"Back"
   },
   ar: {
@@ -92,6 +101,15 @@ window.APEX_I18N = {
     lt_title:"خطة الاستثمار طويلة الأجل", lt_outlook:"النظرة طويلة الأجل", lt_current_entry:"حالة الدخول الحالية", lt_horizon:"الأفق الاستثماري",
     lt_accum:"منطقة التجميع", lt_targets:"الأهداف", lt_target:"الهدف", lt_major_target:"الهدف الرئيسي",
     lt_invalidation:"إلغاء الفكرة طويلة الأجل", lt_thesis:"الفرضية طويلة الأجل", lt_months:"أشهر",
+    why_wait:"لماذا؟", next_trigger:"المحفّز القادم",
+    tc_title:"الاتجاه والتأكيد", tc_trend:"الاتجاه", tc_structure:"الهيكل", tc_ema:"توافق المتوسطات",
+    tc_momentum:"الزخم", tc_macd:"الماكد", tc_adx:"قوة الاتجاه (ADX)", tc_volume:"حجم التداول", tc_market:"توافق السوق",
+    tc_confirmed:"مؤكَّد", tc_missing:"لا يزال مطلوباً",
+    tc_disclaimer:"مقياس لمدى توافق الأدلة المتاحة مع الاتجاه — وليس احتمال ربح أو بديلاً عن الإشارة النهائية.",
+    sc_title:"سيناريوهات التداول", sc_breakout:"اختراق", sc_retest:"اختراق + إعادة اختبار", sc_pullback:"تراجع",
+    sc_failed:"اختراق فاشل", sc_breakdown:"كسر هابط", sc_resistance:"مقاومة", sc_support:"دعم",
+    sc_trigger:"المحفّز", sc_entry:"الدخول", sc_stop:"الوقف", sc_zone:"المنطقة", sc_basis:"الأساس",
+    sc_status:"الحالة", sc_level:"المستوى",
     offline:"غير متصل — يعرض هيكل التطبيق فقط.", back:"رجوع"
   }
 };

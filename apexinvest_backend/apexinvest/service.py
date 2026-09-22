@@ -337,6 +337,29 @@ def analyze_symbol(symbol: str, objective: Objective, *, fetcher=None,
             core["long_term_plan"] = ltp
         except Exception:
             core["long_term_plan"] = {"enabled": False, "reason": _ltp.INSUFFICIENT_DATA_MSG}
+        # Trend & Confirmation + Trade Scenarios (additive only — see
+        # engines/trend_confirmation.py and engines/trade_scenarios.py module
+        # docstrings). Neither ever feeds back into `core["plan"]["action"]`,
+        # which they only read. Both degrade to an honest "unavailable" state
+        # on any failure rather than ever affecting the rest of the analysis.
+        from .engines import trend_confirmation as _tc
+        from .engines import trade_scenarios as _tsc
+        try:
+            tc = _tc.build(df, core.get("regime"), core.get("plan"))
+        except Exception:
+            tc = {"primary_trend": "Unavailable", "confirmation_score": None,
+                  "confirmed_factors": [], "missing_factors": []}
+        core["trend_confirmation"] = tc
+        try:
+            scenarios = _tsc.build(df, last, core.get("plan"), tc)
+        except Exception:
+            scenarios = {"available": False, "reason": "Trade scenarios unavailable."}
+        core["trade_scenarios"] = scenarios
+        try:
+            core["wait_context"] = _tc.compose_wait_context(
+                core.get("plan", {}).get("action", "WAIT"), tc, scenarios)
+        except Exception:
+            core["wait_context"] = {"applicable": False, "why": None, "next_trigger": None}
         core["auto"] = {
             "objective": objective.value,
             "recommended": wanted,
