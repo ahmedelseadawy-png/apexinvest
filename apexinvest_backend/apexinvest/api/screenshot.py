@@ -39,6 +39,7 @@ _ALLOWED_FORMATS = {"PNG", "JPEG", "WEBP"}
 _ERROR_STATUS = {
     "unavailable": 503,
     "auth": 503,
+    "model_error": 503,
     "rate_limit": 429,
     "timeout": 504,
     "provider_error": 502,

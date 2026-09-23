@@ -70,6 +70,19 @@ dependencies = [
     "sentry-sdk==2.69.2",
     "shellingham==1.5.4",
     "typer==0.27.2",
+    # Official Anthropic SDK, used by the TradingView Screenshot Analysis vision
+    # provider (VISION_PROVIDER=anthropic) -- pulled in by anthropic==1.8.0.
+    # Verified installable alongside the pins above with zero conflicts
+    # (`pip check` clean) before adding. anthropic 1.x depends on httpx2, a
+    # separate package from the httpx==0.28.1 already pinned above for
+    # fastapi[standard] -- both coexist.
+    "anthropic==1.8.0",
+    "docstring_parser==0.18.0",
+    "httpcore2==2.13.1",
+    "httpx2==2.13.1",
+    "jiter==0.17.0",
+    "sniffio==1.3.1",
+    "truststore==0.10.4",
 ]
 
 [tool.fastapi]

@@ -100,7 +100,7 @@ def test_missing_image_rejected():
 # --------------------------------------------------------------------------- #
 
 @pytest.mark.parametrize("kind,expected_status", [
-    ("unavailable", 503), ("auth", 503), ("rate_limit", 429),
+    ("unavailable", 503), ("auth", 503), ("model_error", 503), ("rate_limit", 429),
     ("timeout", 504), ("provider_error", 502),
 ])
 def test_vision_provider_failure_modes_map_to_clear_status(monkeypatch, kind, expected_status):

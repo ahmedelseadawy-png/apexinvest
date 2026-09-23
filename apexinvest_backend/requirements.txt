@@ -9,3 +9,4 @@ pdfplumber>=0.11
 requests>=2.31
 pytest>=8.0
 httpx>=0.27,<0.28
+anthropic>=1.8,<2   # official SDK, used by the TradingView Screenshot Analysis vision provider (VISION_PROVIDER=anthropic)

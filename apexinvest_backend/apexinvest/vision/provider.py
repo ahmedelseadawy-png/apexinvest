@@ -1,9 +1,10 @@
 """Vision provider abstraction for TradingView screenshot analysis.
 
-The repo has no existing AI/vision integration (checked before adding this:
-no OpenAI/Anthropic SDK, no provider abstraction anywhere in the codebase),
-so this is a small, dependency-free HTTP client (reuses ``requests``,
-already a project dependency) behind one function: ``analyze_chart_image``.
+Anthropic is the default/recommended provider (calls go through the official
+``anthropic`` Python SDK, not raw HTTP -- see the client construction in
+``_call_anthropic``). OpenAI remains available as a secondary option behind
+the same interface, reached over plain HTTP since no OpenAI SDK is otherwise
+used in this project.
 
 Configuration is entirely via environment variables, mirroring how
 ``market/feed.py`` reads ``DATA_PROVIDER``/the EODHD token -- no secrets in
@@ -11,7 +12,8 @@ code, nothing committed:
 
     VISION_PROVIDER   "anthropic" | "openai"   (unset/empty => feature disabled)
     VISION_API_KEY    the provider's API key    (never logged, never returned)
-    VISION_MODEL      optional model override (each provider has a default)
+    VISION_MODEL      optional model override (each provider has a current,
+                       non-deprecated default -- see _DEFAULT_ANTHROPIC_MODEL)
 
 This module NEVER touches the EODHD adapter, market/feed.py, or any of the
 existing engines -- it only ever sends the screenshot bytes to the
@@ -19,7 +21,10 @@ configured AI vision endpoint and returns that provider's raw parsed JSON
 (as a plain dict) for ``apexinvest/vision/schema.py`` to validate. On any
 failure it raises ``VisionError`` with a machine-readable ``kind`` so the
 API layer can map it to a clear, specific user-facing error (spec section
-23) instead of a generic 500.
+23) instead of a generic 500 -- including a dedicated ``model_error`` kind
+when VISION_MODEL is set to something the provider rejects (unknown/
+deprecated/inaccessible model id), so a bad model config never looks like a
+generic outage.
 """
 from __future__ import annotations
 
@@ -28,22 +33,27 @@ import json
 import os
 import re
 
+import anthropic
 import requests
 
 from . import prompt as prompt_mod
 
 _TIMEOUT_SECONDS = 45
-_DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5"
+# claude-opus-5 is the current, non-deprecated Anthropic vision-capable model
+# (see the claude-api skill's model table) -- override per-deployment with
+# VISION_MODEL, e.g. claude-sonnet-5 or claude-haiku-4-5 for lower cost.
+_DEFAULT_ANTHROPIC_MODEL = "claude-opus-5"
 _DEFAULT_OPENAI_MODEL = "gpt-4o"
+_DEFAULT_MODELS = {"anthropic": _DEFAULT_ANTHROPIC_MODEL, "openai": _DEFAULT_OPENAI_MODEL}
 
 _MEDIA_TYPES = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
 
 
 class VisionError(Exception):
-    """kind is one of: unavailable | auth | rate_limit | timeout | provider_error |
-    malformed_response -- used by the API layer to pick the right HTTP status
-    and message; never exposes the raw provider error body (may contain
-    account/billing details) to the client."""
+    """kind is one of: unavailable | auth | model_error | rate_limit | timeout |
+    provider_error | malformed_response -- used by the API layer to pick the
+    right HTTP status and message; never exposes the raw provider error body
+    (may contain account/billing details) to the client."""
 
     def __init__(self, kind: str, message: str):
         super().__init__(message)
@@ -75,43 +85,51 @@ def _extract_json(text: str) -> dict:
     raise VisionError("malformed_response", "The vision provider's response was not valid JSON.")
 
 
-def _call_anthropic(image_b64: str, media_type: str, metadata: dict, api_key: str) -> dict:
-    model = os.environ.get("VISION_MODEL") or _DEFAULT_ANTHROPIC_MODEL
-    body = {
-        "model": model,
-        "max_tokens": 4096,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
-                {"type": "text", "text": prompt_mod.INSTRUCTIONS + "\n\n" + prompt_mod.build_user_context(metadata)},
-            ],
-        }],
-    }
+def _call_anthropic(image_b64: str, media_type: str, metadata: dict, api_key: str, model: str) -> dict:
+    """Sends the screenshot to Anthropic as an image content block via the
+    official SDK (client.messages.create) and returns the parsed JSON text
+    response. Every SDK exception is mapped to a specific VisionError kind
+    (never a bare/unhandled exception) so a misconfigured VISION_MODEL or
+    VISION_API_KEY produces a clear, actionable message rather than a
+    generic failure."""
+    client = anthropic.Anthropic(api_key=api_key, timeout=_TIMEOUT_SECONDS, max_retries=2)
     try:
-        resp = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
-                     "content-type": "application/json"},
-            json=body, timeout=_TIMEOUT_SECONDS,
+        response = client.messages.create(
+            model=model,
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
+                    {"type": "text", "text": prompt_mod.INSTRUCTIONS + "\n\n" + prompt_mod.build_user_context(metadata)},
+                ],
+            }],
         )
-    except requests.Timeout:
+    except anthropic.NotFoundError:
+        raise VisionError("model_error", (
+            f"The configured VISION_MODEL '{model}' was not found or is not available to this "
+            "account. Check VISION_MODEL against Anthropic's current model list."))
+    except anthropic.AuthenticationError:
+        raise VisionError("auth", "The vision provider rejected the configured VISION_API_KEY.")
+    except anthropic.PermissionDeniedError:
+        raise VisionError("auth", (
+            f"The configured VISION_API_KEY does not have permission to use model '{model}'."))
+    except anthropic.RateLimitError:
+        raise VisionError("rate_limit", "The vision provider is rate-limiting requests. Try again shortly.")
+    except anthropic.APITimeoutError:
         raise VisionError("timeout", "The vision provider timed out.")
-    except requests.RequestException as e:
+    except anthropic.APIConnectionError as e:
         raise VisionError("provider_error", f"Could not reach the vision provider: {e}")
-    _raise_for_status(resp)
-    data = resp.json()
-    try:
-        text = "".join(block.get("text", "") for block in data.get("content", []) if block.get("type") == "text")
-    except Exception:
-        raise VisionError("malformed_response", "The vision provider's response had an unexpected shape.")
+    except anthropic.APIStatusError as e:
+        raise VisionError("provider_error", f"The vision provider returned HTTP {e.status_code}.")
+
+    text = "".join(block.text for block in response.content if block.type == "text")
     if not text:
         raise VisionError("malformed_response", "The vision provider returned an empty response.")
     return _extract_json(text)
 
 
-def _call_openai(image_b64: str, media_type: str, metadata: dict, api_key: str) -> dict:
-    model = os.environ.get("VISION_MODEL") or _DEFAULT_OPENAI_MODEL
+def _call_openai(image_b64: str, media_type: str, metadata: dict, api_key: str, model: str) -> dict:
     body = {
         "model": model,
         "max_tokens": 4096,
@@ -133,7 +151,7 @@ def _call_openai(image_b64: str, media_type: str, metadata: dict, api_key: str) 
         raise VisionError("timeout", "The vision provider timed out.")
     except requests.RequestException as e:
         raise VisionError("provider_error", f"Could not reach the vision provider: {e}")
-    _raise_for_status(resp)
+    _raise_for_status(resp, model)
     data = resp.json()
     try:
         text = data["choices"][0]["message"]["content"]
@@ -144,9 +162,12 @@ def _call_openai(image_b64: str, media_type: str, metadata: dict, api_key: str) 
     return _extract_json(text)
 
 
-def _raise_for_status(resp: "requests.Response") -> None:
+def _raise_for_status(resp: "requests.Response", model: str) -> None:
     if resp.status_code == 200:
         return
+    if resp.status_code == 404:
+        raise VisionError("model_error", (
+            f"The configured VISION_MODEL '{model}' was not found or is not available to this account."))
     if resp.status_code in (401, 403):
         raise VisionError("auth", "The vision provider rejected the configured API key.")
     if resp.status_code == 429:
@@ -159,20 +180,41 @@ def _raise_for_status(resp: "requests.Response") -> None:
 _PROVIDERS = {"anthropic": _call_anthropic, "openai": _call_openai}
 
 
+def _resolve_model(provider: str) -> str:
+    """VISION_MODEL is always optional: unset/blank falls back to a current,
+    non-deprecated default for the selected provider (spec: never guess an
+    obsolete model, and a missing VISION_MODEL must never break the feature).
+    An explicitly-set but wrong model is instead caught at call time and
+    raised as a clear 'model_error' (see _call_anthropic/_raise_for_status)."""
+    configured = (os.environ.get("VISION_MODEL") or "").strip()
+    return configured or _DEFAULT_MODELS[provider]
+
+
 def analyze_chart_image(image_bytes: bytes, image_format: str, metadata: dict) -> dict:
     """Send the screenshot to the configured vision provider and return its
     raw parsed JSON (not yet validated -- see schema.py). Never sends the
     image anywhere else (no EODHD/Yahoo/CSV code path is touched). Raises
-    VisionError on any failure; never raises a bare/unhandled exception."""
+    VisionError with a specific, actionable message on any configuration
+    problem (missing/unknown provider, missing API key, bad model) or
+    provider failure; never raises a bare/unhandled exception."""
     provider = (os.environ.get("VISION_PROVIDER") or "").strip().lower()
-    api_key = (os.environ.get("VISION_API_KEY") or "").strip()
-    if not provider or not api_key:
-        raise VisionError("unavailable", "TradingView screenshot analysis is not configured on this server.")
+    if not provider:
+        raise VisionError("unavailable", (
+            "TradingView screenshot analysis is not configured on this server "
+            "(VISION_PROVIDER is not set)."))
     call = _PROVIDERS.get(provider)
     if call is None:
-        raise VisionError("unavailable", f"Unknown VISION_PROVIDER '{provider}'.")
+        raise VisionError("unavailable", (
+            f"Unknown VISION_PROVIDER '{provider}'. Supported providers: "
+            f"{', '.join(sorted(_PROVIDERS))}."))
+    api_key = (os.environ.get("VISION_API_KEY") or "").strip()
+    if not api_key:
+        raise VisionError("unavailable", (
+            f"TradingView screenshot analysis is not configured: VISION_API_KEY is missing "
+            f"for VISION_PROVIDER={provider}. Set it as a server-side secret."))
     media_type = _MEDIA_TYPES.get(image_format)
     if media_type is None:
         raise VisionError("provider_error", f"Unsupported image format '{image_format}'.")
+    model = _resolve_model(provider)
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
-    return call(image_b64, media_type, metadata, api_key)
+    return call(image_b64, media_type, metadata, api_key, model)
