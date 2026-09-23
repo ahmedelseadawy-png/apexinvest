@@ -641,3 +641,12 @@ app.include_router(_mobile_router)
 _mobile_static = _build_mobile_app()
 if _mobile_static is not None:
     app.mount("/m", _mobile_static)
+
+# --------------------------------------------------------------------------
+# TradingView Screenshot Analysis (additive — see apexinvest/vision/ and
+# apexinvest/api/screenshot.py's module docstring). One new route only;
+# nothing above this line is touched.
+# --------------------------------------------------------------------------
+from .screenshot import router as _screenshot_router
+
+app.include_router(_screenshot_router)

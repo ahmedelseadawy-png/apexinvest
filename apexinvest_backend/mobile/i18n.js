@@ -54,6 +54,15 @@ window.APEX_I18N = {
     sc_failed:"Failed breakout", sc_breakdown:"Breakdown", sc_resistance:"Resistance", sc_support:"Support",
     sc_trigger:"Trigger", sc_entry:"Entry", sc_stop:"Stop", sc_zone:"Zone", sc_basis:"Basis",
     sc_status:"Status", sc_level:"Level",
+    tv_title:"TradingView screenshot analysis", tv_choose:"Upload chart screenshot",
+    tv_sub:"Optional — PNG, JPEG or WEBP. Independent of the ApexInvest/EODHD analysis above; never overrides it.",
+    tv_timeframe:"Timeframe", tv_timeframe_ph:"e.g. Daily", tv_qty:"Qty (optional)", tv_qty_ph:"Qty",
+    tv_avg:"Avg. price (optional)", tv_avg_ph:"Avg. price", tv_analyze_btn:"Analyze screenshot",
+    tv_analyzing:"Analyzing TradingView chart…", tv_result_title:"TradingView visual analysis",
+    tv_price:"Current visible price", tv_not_visible:"Not visible", tv_agreement_note:"agreement, not a probability",
+    tv_structure:"Structure", tv_comparison:"Source comparison", tv_insufficient:"Insufficient data",
+    tv_discrepancy:"Data discrepancy", tv_discrepancy_msg:"TradingView screenshot and market-feed data differ.",
+    tv_screenshot:"Screenshot", tv_external:"External", tv_position:"Your position", tv_unavailable:"Unavailable",
     offline:"Offline — showing the app shell only.", back:"Back"
   },
   ar: {
@@ -110,6 +119,15 @@ window.APEX_I18N = {
     sc_failed:"اختراق فاشل", sc_breakdown:"كسر هابط", sc_resistance:"مقاومة", sc_support:"دعم",
     sc_trigger:"المحفّز", sc_entry:"الدخول", sc_stop:"الوقف", sc_zone:"المنطقة", sc_basis:"الأساس",
     sc_status:"الحالة", sc_level:"المستوى",
+    tv_title:"تحليل لقطة TradingView", tv_choose:"رفع لقطة الرسم البياني",
+    tv_sub:"اختياري — PNG أو JPEG أو WEBP. مستقل عن تحليل ApexInvest/EODHD أعلاه، ولا يُلغيه أبداً.",
+    tv_timeframe:"الإطار الزمني", tv_timeframe_ph:"مثال: يومي", tv_qty:"الكمية (اختياري)", tv_qty_ph:"الكمية",
+    tv_avg:"متوسط السعر (اختياري)", tv_avg_ph:"متوسط السعر", tv_analyze_btn:"تحليل اللقطة",
+    tv_analyzing:"جارٍ تحليل رسم TradingView…", tv_result_title:"التحليل البصري لـ TradingView",
+    tv_price:"السعر الظاهر حالياً", tv_not_visible:"غير مرئي", tv_agreement_note:"درجة اتفاق، وليست احتمالاً",
+    tv_structure:"البنية", tv_comparison:"مقارنة المصادر", tv_insufficient:"بيانات غير كافية",
+    tv_discrepancy:"تعارض في البيانات", tv_discrepancy_msg:"تختلف بيانات لقطة TradingView عن بيانات مصدر السوق.",
+    tv_screenshot:"اللقطة", tv_external:"خارجي", tv_position:"مركزك", tv_unavailable:"غير متاح",
     offline:"غير متصل — يعرض هيكل التطبيق فقط.", back:"رجوع"
   }
 };

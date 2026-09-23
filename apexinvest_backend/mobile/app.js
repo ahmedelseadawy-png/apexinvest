@@ -336,6 +336,9 @@ function renderDash(res) {
   // ever appears when the underlying data is unavailable -- no empty cards.
   const tcCard = trendConfirmationCard(res);
   const scCard = tradeScenariosCard(res);
+  // TradingView Screenshot Analysis (additive, optional): always offered,
+  // independent of whether the feed/CSV analysis above found a usable setup.
+  const tvCard = screenshotCard(res);
 
   const rg = d.regime;
   const regime = card(t('dash_regime'), rg ? [
@@ -377,6 +380,7 @@ function renderDash(res) {
   v.replaceChildren(h('div', { class: 'dgrid' }, head, signal,
     tcCard ? h('div', { class: 'full' }, tcCard) : null,
     scCard ? h('div', { class: 'full' }, scCard) : null,
+    h('div', { class: 'full' }, tvCard),
     ltCard ? h('div', { class: 'full' }, ltCard) : null, regime, plan, h('div', { class: 'full' }, conf), h('div', { class: 'full' }, seg, tabBody)),
     h('p', { class: 'disc' }, d.disclaimer || t('disclaimer')));
   showTab(S.tab in TABS ? S.tab : 'details');
@@ -532,6 +536,131 @@ function tradeScenariosCard(res) {
   if (!blocks.length) return null;
   return card(t('sc_title'), blocks);
 }
+/* ---- TradingView Screenshot Analysis (additive, optional): an uploaded chart
+   screenshot analyzed by /v1/analyses/screenshot. Independent of the feed/CSV
+   analysis on this page -- it never changes plan.action and is shown purely
+   as a side-by-side visual-confirmation card. Every value below comes
+   straight from the API response; nothing here is invented client-side. ---- */
+function fmtBytes(n) { return n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : (n / 1e3).toFixed(0) + ' KB'; }
+function screenshotCard(res) {
+  const st = { file: null, previewUrl: null, loading: false, result: null, error: null,
+    sym: res.symbol || '', tf: '', qty: '', avg: '' };
+  const box = h('div');
+  const draw = () => {
+    box.replaceChildren();
+    const fileIn = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp',
+      'aria-label': t('tv_choose'), onchange: (e) => pick(e.target.files[0]) });
+    box.append(h('label', { class: 'upload' + (st.file ? ' has' : '') }, fileIn, icon('upload'),
+      h('div', { style: 'font-weight:700;margin-top:6px;overflow-wrap:anywhere' }, st.file ? st.file.name : t('tv_choose')),
+      h('div', { class: 'tiny muted', style: 'margin-top:4px' }, t('tv_sub'))));
+    if (st.file) {
+      box.append(h('div', { class: 'row', style: 'gap:10px;margin-top:10px;align-items:center' },
+        st.previewUrl ? h('img', { src: st.previewUrl, style: 'width:44px;height:44px;object-fit:cover;border-radius:8px' }) : null,
+        h('div', { class: 'tiny muted' }, fmtBytes(st.file.size)),
+        h('button', { class: 'btn ghost sm', style: 'margin-inline-start:auto', onclick: () => {
+          st.file = null; st.result = null; st.error = null;
+          if (st.previewUrl) URL.revokeObjectURL(st.previewUrl);
+          st.previewUrl = null; draw();
+        } }, t('remove'))));
+      const symIn = h('input', { class: 'input', value: st.sym, autocapitalize: 'characters', placeholder: 'COMI',
+        oninput: (e) => { st.sym = e.target.value.toUpperCase(); } });
+      const tfIn = h('input', { class: 'input', placeholder: t('tv_timeframe_ph'), oninput: (e) => { st.tf = e.target.value; } });
+      box.append(h('div', { class: 'kv two', style: 'margin-top:10px' },
+        h('label', { class: 'field' }, h('span', { class: 'lbl' }, t('ticker')), symIn),
+        h('label', { class: 'field' }, h('span', { class: 'lbl' }, t('tv_timeframe')), tfIn)));
+      const qtyIn = h('input', { class: 'input', type: 'number', inputmode: 'decimal', placeholder: t('tv_qty_ph'),
+        oninput: (e) => { st.qty = e.target.value; } });
+      const avgIn = h('input', { class: 'input', type: 'number', inputmode: 'decimal', placeholder: t('tv_avg_ph'),
+        oninput: (e) => { st.avg = e.target.value; } });
+      box.append(h('div', { class: 'kv two', style: 'margin-top:8px' },
+        h('label', { class: 'field' }, h('span', { class: 'lbl' }, t('tv_qty')), qtyIn),
+        h('label', { class: 'field' }, h('span', { class: 'lbl' }, t('tv_avg')), avgIn)));
+      box.append(h('button', { class: 'btn primary', style: 'margin-top:12px;width:100%', disabled: st.loading, onclick: analyze },
+        st.loading ? [h('div', { class: 'spin' }), t('tv_analyzing')] : t('tv_analyze_btn')));
+    }
+    if (st.error) box.append(h('div', { class: 'notice err', style: 'margin-top:10px' }, st.error));
+    if (st.result) box.append(renderResult(st.result));
+  };
+  function pick(f) {
+    if (!f) return;
+    st.file = f; st.error = null; st.result = null;
+    if (st.previewUrl) URL.revokeObjectURL(st.previewUrl);
+    st.previewUrl = URL.createObjectURL(f);
+    draw();
+  }
+  async function analyze() {
+    st.loading = true; st.error = null; draw();
+    const fd = new FormData();
+    fd.append('image', st.file);
+    if (st.sym) fd.append('symbol', st.sym);
+    if (st.tf) fd.append('timeframe', st.tf);
+    fd.append('objective', res.objective || 'swing');
+    if (st.qty) fd.append('position_qty', st.qty);
+    if (st.avg) fd.append('average_price', st.avg);
+    try {
+      st.result = await api('/v1/analyses/screenshot', { method: 'POST', body: fd, retries: 0 });
+    } catch (e) { st.error = e.code === 'invalid' ? e.message : errText(e); }
+    st.loading = false; draw();
+  }
+  function renderResult(d) {
+    const sc = d.screenshot || {}, ci = sc.chart_info || {}, tr = sc.trend || {}, stx = sc.structure || {},
+          tc = sc.trend_confirmation || {}, fs = sc.final_signal || {}, ts = sc.trade_scenarios || {};
+    const nodes = [h('div', { class: 'lbl', style: 'margin-top:14px' }, t('tv_result_title'))];
+    nodes.push(h('div', { class: 'kv two' },
+      kvBox(t('tv_price'), ci.current_visible_price != null ? fmt(ci.current_visible_price) : t('tv_not_visible')),
+      tc.confirmation_score != null ? kvBox(t('confidence'), `${tc.confirmation_score}/100`, t('tv_agreement_note')) : null));
+    if (tr.primary || stx.status) nodes.push(h('div', { class: 'ls', style: 'margin-top:6px' },
+      tr.primary ? pill(`${t('trend')}: ${tr.primary}`, actionClass(tr.primary === 'Bullish' ? 'BUY' : tr.primary === 'Bearish' ? 'AVOID' : 'WAIT')) : null,
+      stx.status ? pill(`${t('tv_structure')}: ${stx.status}`) : null));
+    ['breakout', 'breakout_retest', 'pullback', 'failed_breakout', 'breakdown'].forEach((key) => {
+      const s = ts[key];
+      if (!s) return;
+      const rows = [];
+      const row = (k, v) => { if (v == null || v === '') return; rows.push(stat(k, String(v))); };
+      row(t('sc_resistance'), s.resistance); row(t('sc_support'), s.support); row(t('sc_level'), s.level);
+      row(t('sc_trigger'), s.trigger);
+      if (s.zone) row(t('sc_zone'), `${s.zone[0]}–${s.zone[1]}`);
+      if (s.retest_zone) row(t('sc_zone'), `${s.retest_zone[0]}–${s.retest_zone[1]}`);
+      row(t('sc_entry'), s.entry); row(t('sc_stop'), s.stop);
+      row(t('invalidation'), s.invalidation); row(t('sc_status'), s.status);
+      if (!rows.length && !s.status) return;
+      nodes.push(h('div', { class: 'pc' },
+        h('div', { class: 'row between' }, h('b', null, cap(key.replace(/_/g, ' + '))), s.status ? pill(s.status, 'teal') : null),
+        h('div', null, rows)));
+    });
+    const actCls = actionClass(fs.action || 'WAIT');
+    nodes.push(h('div', { class: 'signal ' + actCls, style: 'border-radius:12px;padding:12px;margin-top:10px' },
+      h('div', { class: 'big ' + actCls, style: 'font-size:16px' }, fs.action || t('tv_unavailable')),
+      fs.reason ? h('div', { class: 'small', dir: 'auto', style: 'margin-top:4px' }, fs.reason) : null,
+      fs.next_trigger ? h('div', { class: 'tiny muted', style: 'margin-top:4px' }, `${t('next_trigger')}: ${fs.next_trigger}`) : null,
+      fs.invalidation ? h('div', { class: 'tiny muted' }, `${t('invalidation')}: ${fs.invalidation}`) : null));
+    const comp = d.comparison || {};
+    nodes.push(h('div', { class: 'pc' },
+      h('div', { class: 'lbl' }, t('tv_comparison')),
+      h('div', { class: 'stat' }, h('span', { class: 'k' }, 'ApexInvest'), h('span', { class: 'v num' }, comp.apexinvest_signal || '—')),
+      h('div', { class: 'stat' }, h('span', { class: 'k' }, 'TradingView'), h('span', { class: 'v num' }, comp.screenshot_visual_signal || '—')),
+      h('div', { style: 'margin-top:4px' }, pill(comp.alignment || t('tv_insufficient'))),
+      comp.explanation ? h('div', { class: 'tiny muted', style: 'margin-top:6px' }, comp.explanation) : null));
+    if (d.data_discrepancy) {
+      const dd = d.data_discrepancy;
+      nodes.push(h('div', { class: 'notice warn', style: 'margin-top:10px' },
+        h('b', null, t('tv_discrepancy')),
+        h('div', { class: 'tiny', style: 'margin-top:4px' }, t('tv_discrepancy_msg')),
+        h('div', { class: 'tiny', style: 'margin-top:4px' }, `${t('tv_screenshot')}: ${dd.screenshot_price} · ${t('tv_external')}: ${dd.external_price} (${dd.difference_pct}%)`)));
+    }
+    if (d.position && d.position.unrealized_pl_pct != null) {
+      const p = d.position;
+      nodes.push(h('div', { class: 'pc' }, h('div', { class: 'lbl' }, t('tv_position')),
+        h('div', { class: 'v num ' + (p.unrealized_pl_pct >= 0 ? 'buy' : 'avoid'), style: 'font-size:16px;font-weight:800' },
+          `${p.unrealized_pl_pct >= 0 ? '+' : ''}${p.unrealized_pl_pct}%`)));
+    }
+    if ((sc.notes || []).length) nodes.push(h('div', { class: 'tiny faint', style: 'margin-top:8px' }, sc.notes.join(' ')));
+    return h('div', null, nodes);
+  }
+  draw();
+  return card(t('tv_title'), box);
+}
+
 function confRow(id, d) {
   const sig = (d.signals || []).find((s) => s.strategy_id === id);
   const skipped = ((d.auto && d.auto.skipped_need_more) || []).find((s) => s.strategy === id);
