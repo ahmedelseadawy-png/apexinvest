@@ -39,9 +39,17 @@ import requests
 from . import prompt as prompt_mod
 
 _TIMEOUT_SECONDS = 45
-# claude-opus-5 is the current, non-deprecated Anthropic vision-capable model
-# (see the claude-api skill's model table) -- override per-deployment with
-# VISION_MODEL, e.g. claude-sonnet-5 or claude-haiku-4-5 for lower cost.
+# claude-opus-5 verified against Anthropic's official docs on 2026-09-23:
+# https://platform.claude.com/docs/en/models/opus-5/overview -- exact Claude
+# API model ID, status "Active (legacy)" (not deprecated/retired; retirement
+# not sooner than 2027-07-24), input->output "Text and images -> text"
+# (vision-capable), available on the Claude API (Messages API) among other
+# platforms. Anthropic's current flagship recommendation is Claude Opus 5.5
+# (claude-opus-5-5); claude-opus-5 remains fully supported and is kept here
+# as the shipped default -- override per-deployment with VISION_MODEL, e.g.
+# claude-opus-5-5 for the latest flagship, or claude-sonnet-5 /
+# claude-haiku-4-5 for lower cost (both verified real, current model IDs at
+# https://platform.claude.com/docs/en/about-claude/models/overview).
 _DEFAULT_ANTHROPIC_MODEL = "claude-opus-5"
 _DEFAULT_OPENAI_MODEL = "gpt-4o"
 _DEFAULT_MODELS = {"anthropic": _DEFAULT_ANTHROPIC_MODEL, "openai": _DEFAULT_OPENAI_MODEL}
